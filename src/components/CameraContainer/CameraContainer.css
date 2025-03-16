@@ -1,0 +1,8 @@
+.camera-container {
+  max-width: min(100%, 600px);
+  border: 1px solid blue;
+}
+
+#video {
+  max-width: 100%
+}
