@@ -125,7 +125,7 @@ function App() {
         }
 
         // requestAnimationFrame(detect);
-        setTimeout(detect, 100)
+        setTimeout(detect, 500)
       }
 
       if (isCameraShown) {
