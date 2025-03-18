@@ -88,14 +88,14 @@ function App() {
           const fullFaceDescriptions = await faceapi.detectAllFaces(video)
             .withFaceLandmarks()
             .withFaceDescriptors()
-            // .withFaceExpressions()
+            .withFaceExpressions()
 
           const resizedResults = faceapi.resizeResults(fullFaceDescriptions, dims);
 
           context.clearRect(0, 0, canvas.width, canvas.height);
           faceapi.draw.drawDetections(canvas, resizedResults);
           faceapi.draw.drawFaceLandmarks(canvas, fullFaceDescriptions);
-          // faceapi.draw.drawFaceExpressions(canvas, fullFaceDescriptions, 0.05);
+          faceapi.draw.drawFaceExpressions(canvas, fullFaceDescriptions, 0.05);
 
           /* Storing rectangle position */
           if (resizedResults[0]) {
@@ -125,7 +125,7 @@ function App() {
         }
 
         // requestAnimationFrame(detect);
-        setTimeout(detect, 500)
+        setTimeout(detect, 1000)
       }
 
       if (isCameraShown) {
