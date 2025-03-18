@@ -11,6 +11,9 @@ const CameraContainer = () => {
             id="video"
             className="camera"
           ></video>
+          <canvas
+            id='overlay'  
+          />
         </div>
 
   )
