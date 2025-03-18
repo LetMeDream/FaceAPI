@@ -80,7 +80,7 @@ function App() {
 
       if (isCameraShown) {
 
-        const MODEL_URL = "/models";
+        const MODEL_URL = "FaceAPI/models";
         Promise.all([
             faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
             faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
