@@ -10,6 +10,8 @@ function App() {
     topLeft: { x: 0, y: 0},
     bottomRight: { x: 0, y: 0}
   })
+  const [expression, setExpression] = useState(null)
+  const delayForMobiles = 1000
 
   /* Compare coordinates of the corners of two rectangles */
   const areRectanglesDifferent = (rect1, rect2) => {
@@ -49,6 +51,7 @@ function App() {
       }
     } else {
       setIsCameraShown(false)
+      setExpression(null)
       let canvas = document.getElementById('overlay')
       let context = canvas.getContext('2d');
       // debugger
@@ -63,7 +66,7 @@ function App() {
       // Use requestAnimationFrame to ensure the canvas is updated
       setTimeout(() => {
         context.clearRect(0, 0, canvas.width, canvas.height);
-      }, 1010);
+      }, delayForMobiles + 10);
 
 
       video.srcObject = null
@@ -99,6 +102,7 @@ function App() {
 
           /* Storing rectangle position */
           if (resizedResults[0]) {
+            // debugger
             const newFaceRectangle = {
               topLeft: {
                 x: resizedResults[0].detection.box.topLeft.x,
@@ -114,18 +118,25 @@ function App() {
             if (areRectanglesDifferent(newFaceRectangle, faceRectangle)) {
               setFaceRectangle(newFaceRectangle)
             }
-          } else if (areRectanglesDifferent(faceRectangle, { topLeft: { x: 0, y: 0 }, bottomRight: { x: 0, y: 0 } } )) {
-            setFaceRectangle({
-              topLeft: { x: 0, y: 0 },
-              bottomRight: { x: 0, y: 0 }
-            })
-          }
+            else if (areRectanglesDifferent(faceRectangle, { topLeft: { x: 0, y: 0 }, bottomRight: { x: 0, y: 0 } } )) {
+              setFaceRectangle({
+                topLeft: { x: 0, y: 0 },
+                bottomRight: { x: 0, y: 0 }
+              })
+            }
+            // Set current expression
+            let expressions = resizedResults?.[0]?.expressions
+            if (expressions) {
+              let currentExpression = Object.entries(expressions).reduce((max, current) => max[1] > current[1] ? max : current)
+              setExpression(currentExpression)
+            }
+          } 
 
           // console.log(fullFaceDescriptions)
         }
 
         // requestAnimationFrame(detect);
-        setTimeout(detect, 1000)
+        setTimeout(detect, delayForMobiles)
       }
 
       if (isCameraShown) {
@@ -154,10 +165,19 @@ function App() {
 
         <CameraContainer onPlay={onPlay} />
 
-
         <button onClick={activateCamera}>
           Turn { isCameraShown ? 'off': 'on' } Camera
         </button>
+
+        <div className='info'>
+          <div className="mood border border-blue-100 p-4 rounded">
+            Current mood
+            <div className='text-red-500'>
+              {expression?.[0] || ''}
+            </div> 
+
+          </div>
+        </div>
       </div>
     </>
   )
