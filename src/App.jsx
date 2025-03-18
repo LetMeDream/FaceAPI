@@ -63,7 +63,7 @@ function App() {
       // Use requestAnimationFrame to ensure the canvas is updated
       setTimeout(() => {
         context.clearRect(0, 0, canvas.width, canvas.height);
-      }, 10);
+      }, 1010);
 
 
       video.srcObject = null
