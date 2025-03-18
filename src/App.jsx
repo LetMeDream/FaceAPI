@@ -124,8 +124,8 @@ function App() {
           // console.log(fullFaceDescriptions)
         }
 
-        requestAnimationFrame(detect);
-        // setTimeout(detect, 100)
+        // requestAnimationFrame(detect);
+        setTimeout(detect, 100)
       }
 
       if (isCameraShown) {
