@@ -1,7 +1,7 @@
 import React from 'react'
 import './CameraContainer.css'
 
-const CameraContainer = () => {
+const CameraContainer = ({onPlay}) => {
   return (
         <div className='camera-container'>
           <video
@@ -10,6 +10,7 @@ const CameraContainer = () => {
             muted
             id="video"
             className="camera"
+            onLoadedMetadata={() => onPlay(this)}
           ></video>
           <canvas
             id='overlay'  

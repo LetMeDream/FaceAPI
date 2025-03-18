@@ -21,18 +21,69 @@ function App() {
     )
   }
 
-  /* Loading Models and Triggering detections */
+  /* Tracking face rectangle */
   useEffect(() => {
-    setTimeout(() => {
+    console.log('TopLeft. X: ' + faceRectangle?.topLeft?.x + ', Y:' + faceRectangle?.topLeft?.x)
+  }, [
+    faceRectangle,
+    faceRectangle?.topLeft?.x, 
+    faceRectangle?.topLeft?.y, 
+    faceRectangle?.bottomRight?.x, 
+    faceRectangle?.bottomRight?.y,
+  ])
+
+  const activateCamera = async () => {
+    if (!isCameraShown){
+      setIsCameraShown(true)
+      const video = document.getElementById('video')
+      console.log(video)
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {}
+        })
+        video.srcObject = stream
+        video.onplay = onPlay
+      } catch (error) {
+        console.error(error)
+        toast.error(error?.message)
+      }
+    } else {
+      setIsCameraShown(false)
+      let canvas = document.getElementById('overlay')
+      let context = canvas.getContext('2d');
+      // debugger
+      let video = document.getElementById('video')
+      let stream = video.srcObject
+      let tracks = stream.getTracks()
+      
+      tracks.forEach(track => {
+        track.stop()
+      })
+      
+      // Use requestAnimationFrame to ensure the canvas is updated
+      setTimeout(() => {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+      }, 10);
+
+
+      video.srcObject = null
+    }
+  }
+
+  /* Function to be played on video load .
+  *  Will Load MODELS and start Detection and drawing.
+  */
+  const onPlay = async () => {
       const video = document.getElementById('video')
       const canvas = document.getElementById('overlay')
-      // const context = canvas.getContext('2d');
+      const context = canvas.getContext('2d');
+      const dims = faceapi.matchDimensions(canvas, video, true);
 
+      /* Function that detects and draws faces */
       async function detect () {
         // console here gives an array of undefined
 
         if (video && canvas) {
-          const dims = faceapi.matchDimensions(canvas, video, true);
 
           const fullFaceDescriptions = await faceapi.detectAllFaces(video)
             .withFaceLandmarks()
@@ -41,11 +92,10 @@ function App() {
 
           const resizedResults = faceapi.resizeResults(fullFaceDescriptions, dims);
 
-          // context.clearRect(0, 0, canvas.width, canvas.height);
+          context.clearRect(0, 0, canvas.width, canvas.height);
           faceapi.draw.drawDetections(canvas, resizedResults);
           faceapi.draw.drawFaceLandmarks(canvas, fullFaceDescriptions);
           // faceapi.draw.drawFaceExpressions(canvas, fullFaceDescriptions, 0.05);
-
 
           /* Storing rectangle position */
           if (resizedResults[0]) {
@@ -74,68 +124,24 @@ function App() {
           // console.log(fullFaceDescriptions)
         }
 
-        // requestAnimationFrame(detect);
-        setTimeout(detect, 100)
+        requestAnimationFrame(detect);
+        // setTimeout(detect, 100)
       }
 
       if (isCameraShown) {
 
         const MODEL_URL = "models";
-        Promise.all([
+        Promise.all([ /* Load required models */
             faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
             faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
             faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
             faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
-        ]).then(async () => {
+        ]).then(() => {
             detect()
         }).catch((err) => {
             console.log(err)
         });
       }
-
-
-    }, 1500)
-  }, [isCameraShown])
-
-  /* Tracking fdace rectangle */
-  useEffect(() => {
-    console.log(faceRectangle)
-  }, [
-    faceRectangle,
-    faceRectangle?.topLeft?.x, 
-    faceRectangle?.topLeft?.y, 
-    faceRectangle?.bottomRight?.x, 
-    faceRectangle?.bottomRight?.y,
-  ])
-
-
-
-  const activateCamera = async () => {
-    if (!isCameraShown){
-      setIsCameraShown(true)
-      const video = document.getElementById('video')
-      console.log(video)
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {}
-        })
-        video.srcObject = stream
-      } catch (error) {
-        console.error(error)
-        toast.error(error?.message)
-      }
-    } else {
-      setIsCameraShown(false)
-      const video = document.getElementById('video')
-      const stream = video.srcObject
-      const tracks = stream.getTracks()
-
-      tracks.forEach(track => {
-        track.stop()
-      })
-
-      video.srcObject = null
-    }
   }
 
   return (
@@ -146,7 +152,8 @@ function App() {
       />
       <div className="card">
 
-        <CameraContainer isCameraShown={isCameraShown} />
+        <CameraContainer onPlay={onPlay} />
+
 
         <button onClick={activateCamera}>
           Turn { isCameraShown ? 'off': 'on' } Camera
