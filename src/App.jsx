@@ -11,7 +11,10 @@ function App() {
     bottomRight: { x: 0, y: 0}
   })
   const [expression, setExpression] = useState(null)
-  const delayForMobiles = 1000
+  let predictedAges = []
+
+  let lastAgeUpdate = Date.now();
+  const ageUpdateInterval = 1000;
 
   /* Compare coordinates of the corners of two rectangles */
   const areRectanglesDifferent = (rect1, rect2) => {
@@ -24,7 +27,7 @@ function App() {
   }
 
   /* Tracking face rectangle */
-  useEffect(() => {
+  /* useEffect(() => {
     console.log('TopLeft. X: ' + faceRectangle?.topLeft?.x + ', Y:' + faceRectangle?.topLeft?.x)
   }, [
     faceRectangle,
@@ -32,7 +35,7 @@ function App() {
     faceRectangle?.topLeft?.y, 
     faceRectangle?.bottomRight?.x, 
     faceRectangle?.bottomRight?.y,
-  ])
+  ]) */
 
   const activateCamera = async () => {
     if (!isCameraShown){
@@ -66,12 +69,18 @@ function App() {
       // Use requestAnimationFrame to ensure the canvas is updated
       setTimeout(() => {
         context.clearRect(0, 0, canvas.width, canvas.height);
-      }, delayForMobiles + 10);
+      }, 10);
 
 
       video.srcObject = null
     }
   }
+
+  function interpolateAgePredictions(age) {
+    predictedAges = [age].concat(predictedAges).slice(0, 30)
+    const avgPredictedAge = predictedAges.reduce((total, a) => total + a) / predictedAges.length
+    return avgPredictedAge
+}
 
   /* Function to be played on video load .
   *  Will Load MODELS and start Detection and drawing.
@@ -92,7 +101,7 @@ function App() {
             .withFaceLandmarks()
             .withFaceDescriptor()
             .withFaceExpressions()
-            // .withAgeAndGender()
+            .withAgeAndGender()
 
           if (fullFaceDescriptions) {
 
@@ -100,12 +109,11 @@ function App() {
   
             context.clearRect(0, 0, canvas.width, canvas.height);
             faceapi.draw.drawDetections(canvas, resizedResults);
-            faceapi.draw.drawFaceLandmarks(canvas, fullFaceDescriptions);
-            faceapi.draw.drawFaceExpressions(canvas, fullFaceDescriptions, 0.05);
+            faceapi.draw.drawFaceLandmarks(canvas, resizedResults);
+            faceapi.draw.drawFaceExpressions(canvas, resizedResults, 0.05);
   
-            /* Storing rectangle position */
             if (resizedResults) {
-              // debugger
+              /* Storing rectangle position */
               const newFaceRectangle = {
                 topLeft: {
                   x: resizedResults.detection.box.topLeft.x,
@@ -116,7 +124,6 @@ function App() {
                   y: resizedResults.detection.box.bottomRight.y
                 }
               }
-            
               // Check if the new coordinates are different from the current ones
               if (areRectanglesDifferent(newFaceRectangle, faceRectangle)) {
                 setFaceRectangle(newFaceRectangle)
@@ -127,12 +134,40 @@ function App() {
                   bottomRight: { x: 0, y: 0 }
                 })
               }
+
               // Set current expression
               let expressions = resizedResults?.expressions
               if (expressions) {
                 let currentExpression = Object.entries(expressions).reduce((max, current) => max[1] > current[1] ? max : current)
                 setExpression(currentExpression)
               }
+
+              // Set and DRAW current age and gender
+              let ageGenderResults = fullFaceDescriptions;
+              if (Object.entries(ageGenderResults).length){
+
+                const now = Date.now();
+                if (now - lastAgeUpdate > ageUpdateInterval) {
+                    ageGenderResults = await faceapi.detectSingleFace(video,  new faceapi.TinyFaceDetectorOptions({inputSize: 160}))
+                        .withAgeAndGender();
+                    lastAgeUpdate = now;
+                }
+                
+                if (ageGenderResults) {
+                  const { age, gender, genderProbability } = ageGenderResults;
+                  const interpolatedAge = interpolateAgePredictions(age)
+  
+                  new faceapi.draw.DrawTextField(
+                      [
+                          `${faceapi.utils.round(interpolatedAge, 0)} years`,
+                          `${gender} (${faceapi.utils.round(genderProbability)})`
+                      ],
+                      resizedResults?.detection.box.bottomRight
+                  )?.draw(canvas);
+                }
+
+              }
+
             } 
           }
 
@@ -140,7 +175,7 @@ function App() {
         }
 
         requestAnimationFrame(detect);
-        // setTimeout(detect, delayForMobiles)
+        // setTimeout(detect, 1000)
       }
 
       if (isCameraShown) {
@@ -150,7 +185,8 @@ function App() {
             faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
             faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
             faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-            faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
+            faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+            faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL)
         ]).then(() => {
             detect()
         }).catch((err) => {
@@ -173,15 +209,20 @@ function App() {
           Turn { isCameraShown ? 'off': 'on' } Camera
         </button>
 
-        <div className='info'>
-          <div className="mood border border-blue-100 p-4 rounded">
-            Current mood
-            <div className='text-red-500'>
-              {expression?.[0] || ''}
-            </div> 
+        {
+          isCameraShown ? (
+            <div className='info'>
+              <div className="mood border border-blue-100 p-4 rounded">
+                Current mood: 
+                <div className='text-red-500'>
+                  {expression?.[0] || ''}
+                </div> 
 
-          </div>
-        </div>
+              </div>
+            </div>
+          ) : null
+        }
+        
       </div>
     </>
   )
