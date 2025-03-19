@@ -88,62 +88,66 @@ function App() {
 
         if (video && canvas) {
 
-          const fullFaceDescriptions = await faceapi.detectAllFaces(video)
+          const fullFaceDescriptions = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize: 160}))
             .withFaceLandmarks()
-            .withFaceDescriptors()
+            .withFaceDescriptor()
             .withFaceExpressions()
+            // .withAgeAndGender()
 
-          const resizedResults = faceapi.resizeResults(fullFaceDescriptions, dims);
+          if (fullFaceDescriptions) {
 
-          context.clearRect(0, 0, canvas.width, canvas.height);
-          faceapi.draw.drawDetections(canvas, resizedResults);
-          faceapi.draw.drawFaceLandmarks(canvas, fullFaceDescriptions);
-          faceapi.draw.drawFaceExpressions(canvas, fullFaceDescriptions, 0.05);
-
-          /* Storing rectangle position */
-          if (resizedResults[0]) {
-            // debugger
-            const newFaceRectangle = {
-              topLeft: {
-                x: resizedResults[0].detection.box.topLeft.x,
-                y: resizedResults[0].detection.box.topLeft.y
-              },
-              bottomRight: {
-                x: resizedResults[0].detection.box.bottomRight.x,
-                y: resizedResults[0].detection.box.bottomRight.y
+            const resizedResults = faceapi.resizeResults(fullFaceDescriptions, dims);
+  
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            faceapi.draw.drawDetections(canvas, resizedResults);
+            faceapi.draw.drawFaceLandmarks(canvas, fullFaceDescriptions);
+            faceapi.draw.drawFaceExpressions(canvas, fullFaceDescriptions, 0.05);
+  
+            /* Storing rectangle position */
+            if (resizedResults) {
+              // debugger
+              const newFaceRectangle = {
+                topLeft: {
+                  x: resizedResults.detection.box.topLeft.x,
+                  y: resizedResults.detection.box.topLeft.y
+                },
+                bottomRight: {
+                  x: resizedResults.detection.box.bottomRight.x,
+                  y: resizedResults.detection.box.bottomRight.y
+                }
               }
-            }
-          
-            // Check if the new coordinates are different from the current ones
-            if (areRectanglesDifferent(newFaceRectangle, faceRectangle)) {
-              setFaceRectangle(newFaceRectangle)
-            }
-            else if (areRectanglesDifferent(faceRectangle, { topLeft: { x: 0, y: 0 }, bottomRight: { x: 0, y: 0 } } )) {
-              setFaceRectangle({
-                topLeft: { x: 0, y: 0 },
-                bottomRight: { x: 0, y: 0 }
-              })
-            }
-            // Set current expression
-            let expressions = resizedResults?.[0]?.expressions
-            if (expressions) {
-              let currentExpression = Object.entries(expressions).reduce((max, current) => max[1] > current[1] ? max : current)
-              setExpression(currentExpression)
-            }
-          } 
+            
+              // Check if the new coordinates are different from the current ones
+              if (areRectanglesDifferent(newFaceRectangle, faceRectangle)) {
+                setFaceRectangle(newFaceRectangle)
+              }
+              else if (areRectanglesDifferent(faceRectangle, { topLeft: { x: 0, y: 0 }, bottomRight: { x: 0, y: 0 } } )) {
+                setFaceRectangle({
+                  topLeft: { x: 0, y: 0 },
+                  bottomRight: { x: 0, y: 0 }
+                })
+              }
+              // Set current expression
+              let expressions = resizedResults?.expressions
+              if (expressions) {
+                let currentExpression = Object.entries(expressions).reduce((max, current) => max[1] > current[1] ? max : current)
+                setExpression(currentExpression)
+              }
+            } 
+          }
 
           // console.log(fullFaceDescriptions)
         }
 
-        // requestAnimationFrame(detect);
-        setTimeout(detect, delayForMobiles)
+        requestAnimationFrame(detect);
+        // setTimeout(detect, delayForMobiles)
       }
 
       if (isCameraShown) {
 
         const MODEL_URL = "models";
         Promise.all([ /* Load required models */
-            faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
             faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
             faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
             faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
