@@ -93,7 +93,7 @@ function App() {
   /* Function to be played on video load .
   *  Will Load MODELS and start Detection and drawing.
   */
-  /* const onPlay = async () => {
+  const onPlay = async () => {
       const video = document.getElementById('video')
       const canvas = document.getElementById('overlay')
       const context = canvas.getContext('2d');
@@ -229,9 +229,9 @@ function App() {
             console.log(err)
         });
       }
-  } */
+  }
 
-  const onPlay = async () => {
+  /* const onPlay = async () => {
       const video = document.getElementById('video');
       const canvas = document.getElementById('overlay');
       const context = canvas.getContext('2d');
@@ -347,7 +347,7 @@ function App() {
               console.log(err);
           });
       }
-  };
+  }; */
     
 
 
