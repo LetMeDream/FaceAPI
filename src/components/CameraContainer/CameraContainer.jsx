@@ -4,7 +4,7 @@ import './CameraContainer.css'
 const CameraContainer = ({onPlay}) => {
 
   return (
-        <div className='camera-container border-2 border-red-300'>
+        <div className='camera-container'>
           <video
             autoPlay
             playsInline

@@ -7,9 +7,9 @@
 
 #video {
   width: 100%;
-  height: 400px;
+  height: 100%;
   background-color: black;
-  /* transform: scaleX(-1); */
+  transform: scaleX(-1);
 }
 
 #overlay {
@@ -29,11 +29,11 @@
   background-color: aqua;
 }
 
-.circle-focus {
-  height: 90%; /* 90% del padre; 360px */
+.circle-focus { /* To be used for detecting colission; */
+  height: 95%; /* 95% del padre de 400px; 380px */
   aspect-ratio: 1/1;
+  border: 1px solid red;
   position: absolute;
-  border: 1px solid pink;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -47,7 +47,7 @@
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.75); /* Oscurece el fondo */
-  -webkit-mask-image: radial-gradient(circle 180px at center, transparent 180px, black 160px); /* La mitad de 360px; el diametro del .circle-focus */
-  mask-image: radial-gradient(circle 180px at center, transparent 180px, black 160px);
+  -webkit-mask-image: radial-gradient(circle 190px at center, transparent 190px, black 10px); /* La mitad de 360px; el diametro del .circle-focus */
+  mask-image: radial-gradient(circle 190px at center, transparent 190px, black 10px);
   pointer-events: none; /* Evita que bloquee interacciones con el video */
 }
