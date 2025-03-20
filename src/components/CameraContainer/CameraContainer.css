@@ -3,18 +3,13 @@
   box-sizing: border-box;
 }
 
-.camera-container {
-  max-width: min(100%, 600px);
-  width:500px;
-  height: 400px;
-  position: relative;
-  background-color: aqua;
-}
+
 
 #video {
   width: 100%;
   height: 400px;
   background-color: black;
+  transform: scaleX(-1);
 }
 
 #overlay {
@@ -24,4 +19,35 @@
   left:0;
   width: 100%;
   height: 400px;
+}
+
+.camera-container {
+  max-width: max(100%, 600px);
+  width: 600px;
+  height: 400px; /* Altura del padre de la .mask y .circle-focus */
+  position: relative;
+  background-color: aqua;
+}
+
+.circle-focus {
+  height: 90%; /* 90% del padre; 360px */
+  aspect-ratio: 1/1;
+  position: absolute;
+  border: 1px solid pink;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 100%;
+}
+
+.mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75); /* Oscurece el fondo */
+  -webkit-mask-image: radial-gradient(circle 180px at center, transparent 180px, black 160px); /* La mitad de 360px; el diametro del .circle-focus */
+  mask-image: radial-gradient(circle 180px at center, transparent 180px, black 160px);
+  pointer-events: none; /* Evita que bloquee interacciones con el video */
 }
