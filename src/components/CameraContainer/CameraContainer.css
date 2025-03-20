@@ -32,7 +32,7 @@
 }
 
 .circle-focus { /* To be used for detecting colission; */
-  height: 95%; /* 95% del padre de 400px; 380px */
+  height: 95%; /* 95% del padre de 400px; 380px  */
   aspect-ratio: 1/1;
   border: 1px solid red;
   position: absolute;
