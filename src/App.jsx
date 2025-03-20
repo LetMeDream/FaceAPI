@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import './App.css'
 import CameraContainer from './components/CameraContainer/CameraContainer'
 import { Toaster, toast } from 'react-hot-toast'
@@ -93,7 +93,7 @@ function App() {
   /* Function to be played on video load .
   *  Will Load MODELS and start Detection and drawing.
   */
-  /* const onPlay = async () => {
+  const onPlay = async () => {
       const video = document.getElementById('video')
       const canvas = document.getElementById('overlay')
       const context = canvas.getContext('2d');
@@ -116,8 +116,8 @@ function App() {
             const resizedResults = faceapi.resizeResults(fullFaceDescriptions, dims);
   
             context.clearRect(0, 0, canvas.width, canvas.height);
-          faceapi.draw.drawDetections(canvas, resizedResults);
-            // faceapi.draw.drawFaceLandmarks(canvas, resizedResults);
+            // faceapi.draw.drawDetections(canvas, resizedResults);
+            faceapi.draw.drawFaceLandmarks(canvas, resizedResults);
             // faceapi.draw.drawFaceExpressions(canvas, resizedResults, 0.05);
   
             if (resizedResults) {
@@ -193,13 +193,43 @@ function App() {
                   const { age, gender, genderProbability } = ageGenderResults;
                   const interpolatedAge = interpolateAgePredictions(age)
   
-                  new faceapi.draw.DrawTextField(
+                  /* new faceapi.draw.DrawTextField(
                       [
                           `${faceapi.utils.round(interpolatedAge, 0)} years`,
                           `${gender} (${faceapi.utils.round(genderProbability)})`
                       ],
                       resizedResults?.detection.box.bottomRight
-                  )?.draw(canvas);
+                  )?.draw(canvas); */
+
+                  // Crear el texto a dibujar
+                  const ageText = `${faceapi.utils.round(interpolatedAge, 0)} years`;
+                  const genderText = `${gender} (${faceapi.utils.round(genderProbability)})`;
+
+                  // Definir la posición del texto
+                  const textX = resizedResults.detection.box.bottomRight.x;
+                  const textY = resizedResults.detection.box.bottomRight.y;
+
+                  // Guardar el estado actual del contexto
+                  context.save();
+
+                  // Aplicar la transformación para voltear el texto horizontalmente
+                  context.scale(-1, 1);
+                  context.translate(-canvas.width, 0);
+
+                  // Establecer el estilo del texto
+                  context.font = '16px Arial';
+                  context.fillStyle = 'white';
+                  context.strokeStyle = 'black';
+                  context.lineWidth = 2;
+
+                  // Dibujar el texto con un borde para mayor legibilidad
+                  context.strokeText(ageText,     canvas.width - textX + 2*margin,               textY);
+                  context.fillText(ageText,       canvas.width - textX + 2*margin,               textY);
+                  context.strokeText(genderText,  canvas.width - textX + 2*margin,      textY + margin);
+                  context.fillText(genderText,    canvas.width - textX + 2*margin,      textY + margin);
+
+                  // Restaurar el estado original del contexto
+                  context.restore();
                 }
 
               }
@@ -229,9 +259,10 @@ function App() {
             console.log(err)
         });
       }
-  } */
+  }
 
-  const onPlay = async () => {
+  /* onPlay: MIRROR VERSION  */
+  /* const onPlay = async () => {
       const video = document.getElementById('video');
       const canvas = document.getElementById('overlay');
       const context = canvas.getContext('2d');
@@ -248,6 +279,9 @@ function App() {
               if (fullFaceDescriptions) {
                   const resizedResults = faceapi.resizeResults(fullFaceDescriptions, dims);
                   context.clearRect(0, 0, canvas.width, canvas.height);
+
+                  faceapi.draw.drawFaceLandmarks(canvas, resizedResults);
+
   
                   // 🔹 1. Obtener la detección original
                   const originalBox = resizedResults.detection.box;
@@ -323,7 +357,7 @@ function App() {
                                   `${faceapi.utils.round(interpolatedAge, 0)} years`,
                                   `${gender} (${faceapi.utils.round(genderProbability)})`
                               ],
-                              { x: mirroredBox.x + mirroredBox.width, y: (mirroredBox.y + mirroredBox.height) } // Ajustar posición reflejada
+                              { x: mirroredBox.x + mirroredBox.width - margin, y: (mirroredBox.y + mirroredBox.width - margin) } // Ajustar posición reflejada
                           ).draw(canvas);
                       }
                   }
@@ -347,7 +381,7 @@ function App() {
               console.log(err);
           });
       }
-  };
+  }; */
     
 
 
