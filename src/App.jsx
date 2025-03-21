@@ -383,8 +383,6 @@ function App() {
       }
   }; */
     
-
-
   const onPause = () => {
     let video = document.getElementById('video')
     video.pause()

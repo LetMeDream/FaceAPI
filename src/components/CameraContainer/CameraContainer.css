@@ -10,7 +10,7 @@
   height: 100%;
   background-color: black;
   transform: scaleX(-1); /* Both inverted  */
-  object-fit: cover;
+  object-fit: fill;
 }
 
 #overlay {
