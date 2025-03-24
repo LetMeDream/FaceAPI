@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 import CameraContainer from './components/CameraContainer/CameraContainer'
 import { Toaster, toast } from 'react-hot-toast'
@@ -7,6 +7,7 @@ import * as faceapi from 'face-api.js'
 function App() {
   const [isCameraShown, setIsCameraShown] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [modelsLoaded, setModelsLoaded] = useState(false)
   const [faceRectangle, setFaceRectangle] = useState({
     topLeft: { x: 0, y: 0},
     bottomRight: { x: 0, y: 0}
@@ -88,177 +89,160 @@ function App() {
     predictedAges = [age].concat(predictedAges).slice(0, 30)
     const avgPredictedAge = predictedAges.reduce((total, a) => total + a) / predictedAges.length
     return avgPredictedAge
-}
+  }
+
+  useEffect(() => {
+    const loadModels = async () => {
+      const MODEL_URL = "models";
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+          faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL)
+        ]);
+        setModelsLoaded(true);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadModels();
+  }, []);
 
   /* Function to be played on video load .
   *  Will Load MODELS and start Detection and drawing.
   */
   const onPlay = async () => {
-      const video = document.getElementById('video')
-      const canvas = document.getElementById('overlay')
-      const context = canvas.getContext('2d');
-      const dims = faceapi.matchDimensions(canvas, video, true);
+    if (!modelsLoaded) return;
 
-      //  Function that detects and draws faces
-      async function detect () {
-        // console here gives an array of undefined
+    const video = document.getElementById('video')
+    const canvas = document.getElementById('overlay')
+    const context = canvas.getContext('2d');
+    const dims = faceapi.matchDimensions(canvas, video, true);
 
-        if (video && canvas) {
+    async function detect () {
+      if (video && canvas) {
+        const fullFaceDescriptions = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize: 160}))
+          .withFaceLandmarks()
+          .withFaceDescriptor()
+          .withFaceExpressions()
+          .withAgeAndGender()
 
-          const fullFaceDescriptions = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize: 160}))
-            .withFaceLandmarks()
-            .withFaceDescriptor()
-            .withFaceExpressions()
-            .withAgeAndGender()
+        if (fullFaceDescriptions) {
+          const resizedResults = faceapi.resizeResults(fullFaceDescriptions, dims);
+          context.clearRect(0, 0, canvas.width, canvas.height);
 
-          if (fullFaceDescriptions) {
+          const landmarks = resizedResults.landmarks.positions;
+          context.fillStyle = 'blue';
+          let importantLandmarks = [1, 15, 30]
+          landmarks.forEach((point, index) => {
+            if (importantLandmarks.includes(index)) {
+              context.beginPath();
+              context.arc(point.x, point.y, 2, 0, 2 * Math.PI);
+              context.fill();
+              context.fillText(index, point.x + 3, point.y - 3);
+            }
+          });
 
-            const resizedResults = faceapi.resizeResults(fullFaceDescriptions, dims);
-  
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            // faceapi.draw.drawDetections(canvas, resizedResults);
-            faceapi.draw.drawFaceLandmarks(canvas, resizedResults);
-            // faceapi.draw.drawFaceExpressions(canvas, resizedResults, 0.05);
-  
-            if (resizedResults) {
-              // Storing rectangle position/
-              const newFaceRectangle = {
-                topLeft: {
-                  x: resizedResults.detection.box.topLeft.x,
-                  y: resizedResults.detection.box.topLeft.y
-                },
-                bottomRight: {
-                  x: resizedResults.detection.box.bottomRight.x,
-                  y: resizedResults.detection.box.bottomRight.y
-                }
+          if (resizedResults) {
+            const newFaceRectangle = {
+              topLeft: {
+                x: resizedResults.detection.box.topLeft.x,
+                y: resizedResults.detection.box.topLeft.y
+              },
+              bottomRight: {
+                x: resizedResults.detection.box.bottomRight.x,
+                y: resizedResults.detection.box.bottomRight.y
               }
-              // Draw smaller rectangle
-              const margin = 20; // Margin for the smaller rectangle
-              const smallRect = {
-                topLeft: {
-                  x: resizedResults.detection.box.topLeft.x + 2*margin,
-                  y: resizedResults.detection.box.topLeft.y + margin
-                },
-                bottomRight: {
-                  x: resizedResults.detection.box.bottomRight.x - 2*margin,
-                  y: resizedResults.detection.box.bottomRight.y - margin
-                }
+            }
+            const margin = 20;
+            const smallRect = {
+              topLeft: {
+                x: resizedResults.detection.box.topLeft.x + 2*margin,
+                y: resizedResults.detection.box.topLeft.y + margin
+              },
+              bottomRight: {
+                x: resizedResults.detection.box.bottomRight.x - 2*margin,
+                y: resizedResults.detection.box.bottomRight.y - margin
               }
+            }
 
-              context.strokeStyle = 'red';
-              context.lineWidth = 2;
-              context.strokeRect(
-                smallRect.topLeft.x,
-                smallRect.topLeft.y,
-                smallRect.bottomRight.x - smallRect.topLeft.x,
-                smallRect.bottomRight.y - smallRect.topLeft.y
-              );
+            context.strokeStyle = 'red';
+            context.lineWidth = 2;
+            context.strokeRect(
+              smallRect.topLeft.x,
+              smallRect.topLeft.y,
+              smallRect.bottomRight.x - smallRect.topLeft.x,
+              smallRect.bottomRight.y - smallRect.topLeft.y
+            );
 
-              // Check if the new coordinates are different from the current ones
-              if (areRectanglesDifferent(newFaceRectangle, faceRectangle)) {
-                setFaceRectangle(newFaceRectangle),
-                setAdjustedFaceRectangle(smallRect)
+            if (areRectanglesDifferent(newFaceRectangle, faceRectangle)) {
+              setFaceRectangle(newFaceRectangle),
+              setAdjustedFaceRectangle(smallRect)
+            } else if (areRectanglesDifferent(faceRectangle, { topLeft: { x: 0, y: 0 }, bottomRight: { x: 0, y: 0 } } )) {
+              setFaceRectangle({
+                topLeft: { x: 0, y: 0 },
+                bottomRight: { x: 0, y: 0 }
+              })
+              setAdjustedFaceRectangle({
+                topLeft: { x: 0, y: 0 },
+                bottomRight: { x: 0, y: 0 }
+              })
+            }
+
+            let expressions = resizedResults?.expressions
+            if (expressions) {
+              let currentExpression = Object.entries(expressions).reduce((max, current) => max[1] > current[1] ? max : current)
+              setExpression(currentExpression)
+            }
+
+            let ageGenderResults = fullFaceDescriptions;
+            if (Object.entries(ageGenderResults).length){
+              const now = Date.now();
+              if (now - lastAgeUpdate > ageUpdateInterval) {
+                ageGenderResults = await faceapi.detectSingleFace(video,  new faceapi.TinyFaceDetectorOptions({inputSize: 160}))
+                  .withAgeAndGender();
+                lastAgeUpdate = now;
               }
-              else if (areRectanglesDifferent(faceRectangle, { topLeft: { x: 0, y: 0 }, bottomRight: { x: 0, y: 0 } } )) {
-                setFaceRectangle({
-                  topLeft: { x: 0, y: 0 },
-                  bottomRight: { x: 0, y: 0 }
-                })
-                setAdjustedFaceRectangle({
-                  topLeft: { x: 0, y: 0 },
-                  bottomRight: { x: 0, y: 0 }
-                })
+              
+              if (ageGenderResults) {
+                const { age, gender, genderProbability } = ageGenderResults;
+                const interpolatedAge = interpolateAgePredictions(age)
+
+                const ageText = `${faceapi.utils.round(interpolatedAge, 0)} years`;
+                const genderText = `${gender} (${faceapi.utils.round(genderProbability)})`;
+
+                const textX = resizedResults.detection.box.bottomRight.x;
+                const textY = resizedResults.detection.box.bottomRight.y;
+
+                context.save();
+                context.scale(-1, 1);
+                context.translate(-canvas.width, 0);
+
+                context.font = '16px Arial';
+                context.fillStyle = 'white';
+                context.strokeStyle = 'black';
+                context.lineWidth = 2;
+
+                context.strokeText(ageText, canvas.width - textX + 2*margin, textY);
+                context.fillText(ageText, canvas.width - textX + 2*margin, textY);
+                context.strokeText(genderText, canvas.width - textX + 2*margin, textY + margin);
+                context.fillText(genderText, canvas.width - textX + 2*margin, textY + margin);
+
+                context.restore();
               }
-
-
-              // Set current expression
-              let expressions = resizedResults?.expressions
-              if (expressions) {
-                let currentExpression = Object.entries(expressions).reduce((max, current) => max[1] > current[1] ? max : current)
-                setExpression(currentExpression)
-              }
-
-              // Set and DRAW current age and gender
-              let ageGenderResults = fullFaceDescriptions;
-              if (Object.entries(ageGenderResults).length){
-
-                const now = Date.now();
-                if (now - lastAgeUpdate > ageUpdateInterval) {
-                    ageGenderResults = await faceapi.detectSingleFace(video,  new faceapi.TinyFaceDetectorOptions({inputSize: 160}))
-                        .withAgeAndGender();
-                    lastAgeUpdate = now;
-                }
-                
-                if (ageGenderResults) {
-                  const { age, gender, genderProbability } = ageGenderResults;
-                  const interpolatedAge = interpolateAgePredictions(age)
-  
-                  /* new faceapi.draw.DrawTextField(
-                      [
-                          `${faceapi.utils.round(interpolatedAge, 0)} years`,
-                          `${gender} (${faceapi.utils.round(genderProbability)})`
-                      ],
-                      resizedResults?.detection.box.bottomRight
-                  )?.draw(canvas); */
-
-                  // Crear el texto a dibujar
-                  const ageText = `${faceapi.utils.round(interpolatedAge, 0)} years`;
-                  const genderText = `${gender} (${faceapi.utils.round(genderProbability)})`;
-
-                  // Definir la posición del texto
-                  const textX = resizedResults.detection.box.bottomRight.x;
-                  const textY = resizedResults.detection.box.bottomRight.y;
-
-                  // Guardar el estado actual del contexto
-                  context.save();
-
-                  // Aplicar la transformación para voltear el texto horizontalmente
-                  context.scale(-1, 1);
-                  context.translate(-canvas.width, 0);
-
-                  // Establecer el estilo del texto
-                  context.font = '16px Arial';
-                  context.fillStyle = 'white';
-                  context.strokeStyle = 'black';
-                  context.lineWidth = 2;
-
-                  // Dibujar el texto con un borde para mayor legibilidad
-                  context.strokeText(ageText,     canvas.width - textX + 2*margin,               textY);
-                  context.fillText(ageText,       canvas.width - textX + 2*margin,               textY);
-                  context.strokeText(genderText,  canvas.width - textX + 2*margin,      textY + margin);
-                  context.fillText(genderText,    canvas.width - textX + 2*margin,      textY + margin);
-
-                  // Restaurar el estado original del contexto
-                  context.restore();
-                }
-
-              }
-
-            } 
+            }
           }
-
-          // console.log(fullFaceDescriptions)
         }
-
         requestAnimationFrame(detect);
-        // setTimeout(detect, 1000)
       }
+    }
 
-      if (isCameraShown) {
-
-        const MODEL_URL = "models";
-        Promise.all([ // Load required models 
-            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-            faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
-            faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL)
-        ]).then(() => {
-            detect()
-        }).catch((err) => {
-            console.log(err)
-        });
-      }
+    if (isCameraShown) {
+      detect();
+    }
   }
 
   /* onPlay: MIRROR VERSION  */
