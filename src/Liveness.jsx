@@ -13,16 +13,16 @@ function Liveness() {
     topLeft: { x: 0, y: 0},
     bottomRight: { x: 0, y: 0}
   })
-  /* Local (inside of canvas) coordinates for the Adjusted (smaller) rectangle. */
+  /* Local (inside of canvas) coordinates for the Adjusted (smaller) rectangle. 
+  *  This rectangle is used to calculate the coordinates of the face rectangle in the video. The one PAINTED in the canvas.
+  */
   const [adjustedFaceRectangle, setAdjustedFaceRectangle] = useState({
     topLeft: { x: 0, y: 0},
     bottomRight: { x: 0, y: 0}
   })
+  const [adjustedFaceRectangleCoordinates, setAdjustedFaceRectangleCoordinates] = useState(null)
   /* Global coordinates for the Adjusted (smaller) rectangle */
-  const [globalAdjustedFaceRectangle, setGlobalAdjustedFaceRectangle] = useState({
-    topLeft: { x: 0, y: 0},
-    bottomRight: { x: 0, y: 0}
-  })
+  // const [globalAdjustedFaceRectangle, setGlobalAdjustedFaceRectangle] = useState(null)
   const [expression, setExpression] = useState(null)
   let predictedAges = []
 
@@ -143,7 +143,7 @@ function Liveness() {
             const resizedResults = faceapi.resizeResults(fullFaceDescriptions, dims);
             
             context.clearRect(0, 0, canvas.width, canvas.height);
-            faceapi.draw.drawDetections(canvas, resizedResults)
+            // faceapi.draw.drawDetections(canvas, resizedResults)
             // faceapi.draw.drawFaceLandmarks(canvas, resizedResults);
 
             const landmarks = resizedResults.landmarks.positions;
@@ -179,6 +179,7 @@ function Liveness() {
                 }
               }
               const margin = 20;
+              // Rectangle to be drawn in the canvas
               const smallRect = {
                 topLeft: {
                   x: resizedResults.detection.box.topLeft.x + 2*margin,
@@ -198,6 +199,7 @@ function Liveness() {
                 }
               }
 
+              // Draw the rectangle on the canvas
               context.strokeStyle = 'red';
               context.lineWidth = 2;
               context.strokeRect(
@@ -207,9 +209,30 @@ function Liveness() {
                 smallRect.bottomRight.y - smallRect.topLeft.y
               );
 
+              // Real coordinates of the rectangle
+              const smallRectRealCoordinates = {
+                topLeft: {
+                  x: (resizedResults.detection.imageWidth - resizedResults.detection.box.bottomRight.x) + 2*margin,
+                  y: resizedResults.detection.box.topLeft.y + margin
+                },
+                topRight: {
+                  x: (resizedResults.detection.imageWidth - resizedResults.detection.box.bottomLeft.x) - 2*margin,
+                  y: resizedResults.detection.box.topRight.y + margin
+                },
+                bottomRight: {
+                  x: (resizedResults.detection.imageWidth - resizedResults.detection.box.topLeft.x) - 2*margin,
+                  y: resizedResults.detection.box.bottomRight.y - margin
+                },
+                bottomLeft: {
+                  x: (resizedResults.detection.imageWidth - resizedResults.detection.box.topRight.x) + 2*margin,
+                  y: resizedResults.detection.box.bottomLeft.y - margin
+                }
+              }
+
               if (areRectanglesDifferent(newFaceRectangle, faceRectangle)) {
                 setFaceRectangle(newFaceRectangle),
                 setAdjustedFaceRectangle(smallRect)
+                setAdjustedFaceRectangleCoordinates(smallRectRealCoordinates)
               } else if (areRectanglesDifferent(faceRectangle, { topLeft: { x: 0, y: 0 }, bottomRight: { x: 0, y: 0 } } )) {
                 setFaceRectangle({
                   topLeft: { x: 0, y: 0 },
@@ -340,10 +363,10 @@ function Liveness() {
                         </span>
                         <span className='text-red-400 text-sm flex flex-col'>
                           <div className='text-nowrap'>
-                            X: { Math.trunc(faceRectangle?.topLeft?.x) || '' }
+                            X: { Math.trunc(adjustedFaceRectangleCoordinates?.topLeft?.x) || '' }
                           </div>
                           <div className='text-nowrap'>
-                            Y: { Math.trunc(faceRectangle?.topLeft?.y) || '' }
+                            Y: { Math.trunc(adjustedFaceRectangleCoordinates?.topLeft?.y) || '' }
                           </div>
                         </span>
                       </span>
@@ -355,10 +378,10 @@ function Liveness() {
                         </span>
                         <span className='text-red-400 text-sm flex flex-col'>
                           <div className=' w text-nowrap'>
-                            X: { Math.trunc(faceRectangle?.topRight?.x) || '' }
+                            X: { Math.trunc(adjustedFaceRectangleCoordinates?.topRight?.x) || '' }
                           </div>
                           <div className=' w text-nowrap'>
-                            Y: { Math.trunc(faceRectangle?.topRight?.y) || '' }
+                            Y: { Math.trunc(adjustedFaceRectangleCoordinates?.topRight?.y) || '' }
                           </div>
                         </span>
                       </span>
@@ -374,10 +397,10 @@ function Liveness() {
                         </span>
                         <span className='text-red-400 text-sm flex flex-col'>
                           <span>
-                            X: { Math.trunc(faceRectangle?.bottomLeft?.x) || '' }
+                            X: { Math.trunc(adjustedFaceRectangleCoordinates?.bottomLeft?.x) || '' }
                           </span>
                           <span>
-                            Y: { Math.trunc(faceRectangle?.bottomLeft?.y) || '' }
+                            Y: { Math.trunc(adjustedFaceRectangleCoordinates?.bottomLeft?.y) || '' }
                           </span>
                         </span>
                       </span>
@@ -390,10 +413,10 @@ function Liveness() {
                         </span>
                         <span className='text-red-400 text-sm flex flex-col'>
                           <span>
-                            X: { Math.trunc(faceRectangle?.bottomRight?.x) || '' }
+                            X: { Math.trunc(adjustedFaceRectangleCoordinates?.bottomRight?.x) || '' }
                           </span>
                           <span>
-                            Y: { Math.trunc(faceRectangle?.bottomRight?.y) || '' }
+                            Y: { Math.trunc(adjustedFaceRectangleCoordinates?.bottomRight?.y) || '' }
                           </span>
                         </span>
                       </span>
