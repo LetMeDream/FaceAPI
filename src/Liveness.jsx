@@ -14,16 +14,21 @@ function Liveness() {
     bottomRight: { x: 0, y: 0}
   })
   /* Local (inside of canvas) coordinates for the Adjusted (smaller) rectangle. 
-  *  This rectangle is used to calculate the coordinates of the face rectangle in the video. The one PAINTED in the canvas.
+  *  This rectangle is used to calculate the coordinates of the face rectangle in the video according to the Canvas.
   */
-  const [adjustedFaceRectangle, setAdjustedFaceRectangle] = useState({
+  const [, setAdjustedFaceRectangle] = useState({
     topLeft: { x: 0, y: 0},
     bottomRight: { x: 0, y: 0}
   })
   const [adjustedFaceRectangleCoordinates, setAdjustedFaceRectangleCoordinates] = useState(null)
-  /* Global coordinates for the Adjusted (smaller) rectangle */
-  // const [globalAdjustedFaceRectangle, setGlobalAdjustedFaceRectangle] = useState(null)
+  /* Local (inside of canvas) coordinates for circle-focus Boundary Rectangle */
+  const [circleFocusBoundaryRectangle, setCircleFocusBoundaryRectangle] = useState(null)
+  const [prevCircleFocusBoundaryRectangle, setPrevCircleFocusBoundaryRectangle] = useState(null); // Extra-state, required only for utility of useEffect.
+  const [isValid, setIsValid] = useState(false) // 'inside' || 'outside'
+
+  /* Expression */
   const [expression, setExpression] = useState(null)
+  /* Ages */
   let predictedAges = []
 
   let lastAgeUpdate = Date.now();
@@ -50,6 +55,17 @@ function Liveness() {
     faceRectangle?.bottomRight?.x, 
     faceRectangle?.bottomRight?.y,
   ]) */
+
+  /* circle-focus rect boundary */
+  useEffect(() => {
+    if (
+      circleFocusBoundaryRectangle &&
+      JSON.stringify(circleFocusBoundaryRectangle) !== JSON.stringify(prevCircleFocusBoundaryRectangle)
+    ) {
+      console.log(circleFocusBoundaryRectangle);
+      setPrevCircleFocusBoundaryRectangle(circleFocusBoundaryRectangle);
+    }
+  }, [circleFocusBoundaryRectangle, prevCircleFocusBoundaryRectangle]);
 
   const activateCamera = async () => {
     if (!isCameraShown){
@@ -92,10 +108,27 @@ function Liveness() {
     }
   }
 
+  /* Helper function, rounding age for better approximation */
   function interpolateAgePredictions(age) {
     predictedAges = [age].concat(predictedAges).slice(0, 30)
     const avgPredictedAge = predictedAges.reduce((total, a) => total + a) / predictedAges.length
     return avgPredictedAge
+  }
+
+  /* Helper function. Helps us calculate whether one box is inside another */
+  function isRetangleInside(biggerRectangle, smallerRectangle) {
+    // Comprobar si el smallerRectangle está completamente dentro del biggerRectangle
+    const dentroDeCuadro1 =
+      smallerRectangle.topLeft.x >= biggerRectangle.topLeft.x &&
+      smallerRectangle.topLeft.y >= biggerRectangle.topLeft.y &&
+      smallerRectangle.topRight.x <= biggerRectangle.topRight.x &&
+      smallerRectangle.topRight.y >= biggerRectangle.topRight.y &&
+      smallerRectangle.bottomRight.x <= biggerRectangle.bottomRight.x &&
+      smallerRectangle.bottomRight.y <= biggerRectangle.bottomRight.y &&
+      smallerRectangle.bottomLeft.x >= biggerRectangle.bottomLeft.x &&
+      smallerRectangle.bottomLeft.y <= biggerRectangle.bottomLeft.y;
+  
+    return dentroDeCuadro1;
   }
 
   /* Load models */
@@ -132,6 +165,10 @@ function Liveness() {
 
     async function detect () {
       if (video && canvas) {
+        if (video.paused || video.ended) {
+          return; // Stoping detection if video is paused oor ended
+        }
+
         const fullFaceDescriptions = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize: 160}))
           .withFaceLandmarks()
           .withFaceDescriptor()
@@ -139,157 +176,203 @@ function Liveness() {
           .withAgeAndGender()
 
           
-          if (fullFaceDescriptions) {
-            const resizedResults = faceapi.resizeResults(fullFaceDescriptions, dims);
+        if (fullFaceDescriptions) {
+          const resizedResults = faceapi.resizeResults(fullFaceDescriptions, dims);
+          
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          // faceapi.draw.drawDetections(canvas, resizedResults)
+          // faceapi.draw.drawFaceLandmarks(canvas, resizedResults);
+
+          const landmarks = resizedResults.landmarks.positions;
+          context.fillStyle = 'blue';
+          let importantLandmarks = [1, 15, 30]
+          landmarks.forEach((point, index) => {
+            if (importantLandmarks.includes(index)) {
+              context.beginPath();
+              context.arc(point.x, point.y, 2, 0, 2 * Math.PI);
+              context.fill();
+              context.fillText(index, point.x + 3, point.y - 3);
+            }
+          });
+
+          if (resizedResults) {
+            const newFaceRectangle = {
+              topLeft: {
+                x: (resizedResults.detection.imageWidth - resizedResults.detection.box.bottomRight.x),   // Invirtiendo eje x
+                y: resizedResults.detection.box.topLeft.y
+              },
+              topRight: {
+                x: (resizedResults.detection.imageWidth - resizedResults.detection.box.bottomLeft.x),    // Invirtiendo eje x
+                y: resizedResults.detection.box.topRight.y,
+              },
+              bottomLeft: {
+                x: (resizedResults.detection.imageWidth - resizedResults.detection.box.topRight.x),     // Invirtiendo eje x
+                y: resizedResults.detection.box.bottomLeft.y
+              },
+              bottomRight: {
+                x: (resizedResults.detection.imageWidth - resizedResults.detection.box.topLeft.x),      // Invirtiendo eje x
+                y: resizedResults.detection.box.bottomRight.y
+              }
+            }
+            const margin = 10;
+            // Rectangle to be drawn in the canvas
+            const smallRect = {
+              topLeft: {
+                x: resizedResults.detection.box.topLeft.x + 2*margin,
+                y: resizedResults.detection.box.topLeft.y + margin
+              },
+              topRight: {
+                x: resizedResults.detection.box.topRight.x - 2*margin,
+                y: resizedResults.detection.box.topRight.y + margin
+              },
+              bottomRight: {
+                x: resizedResults.detection.box.bottomRight.x - 2*margin,
+                y: resizedResults.detection.box.bottomRight.y - margin
+              },
+              bottomLeft: {
+                x: resizedResults.detection.box.bottomLeft.x + 2*margin,
+                y: resizedResults.detection.box.bottomLeft.y - margin
+              }
+            }
             
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            // faceapi.draw.drawDetections(canvas, resizedResults)
-            // faceapi.draw.drawFaceLandmarks(canvas, resizedResults);
 
-            const landmarks = resizedResults.landmarks.positions;
-            context.fillStyle = 'blue';
-            let importantLandmarks = [1, 15, 30]
-            landmarks.forEach((point, index) => {
-              if (importantLandmarks.includes(index)) {
-                context.beginPath();
-                context.arc(point.x, point.y, 2, 0, 2 * Math.PI);
-                context.fill();
-                context.fillText(index, point.x + 3, point.y - 3);
+
+            // Real coordinates of the rectangle (According to the canvas and inverted)
+            const smallRectRealCoordinates = {
+              topLeft: {
+                x: (resizedResults.detection.imageWidth - resizedResults.detection.box.bottomRight.x) + 2*margin,  // Inverting coordinates
+                y: resizedResults.detection.box.topLeft.y + margin
+              },
+              topRight: {
+                x: (resizedResults.detection.imageWidth - resizedResults.detection.box.bottomLeft.x) - 2*margin,   // Inverting coordinates
+                y: resizedResults.detection.box.topRight.y + margin
+              },
+              bottomRight: {
+                x: (resizedResults.detection.imageWidth - resizedResults.detection.box.topLeft.x) - 2*margin,      // Inverting coordinates
+                y: resizedResults.detection.box.bottomRight.y - margin
+              },
+              bottomLeft: {
+                x: (resizedResults.detection.imageWidth - resizedResults.detection.box.topRight.x) + 2*margin,     // Inverting coordinates
+                y: resizedResults.detection.box.bottomLeft.y - margin
               }
-            });
+            }
 
-            if (resizedResults) {
-              // debugger
-              const newFaceRectangle = {
-                topLeft: {
-                  x: (resizedResults.detection.imageWidth - resizedResults.detection.box.bottomRight.x),   // Invirtiendo eje x
-                  y: resizedResults.detection.box.topLeft.y
-                },
-                topRight: {
-                  x: (resizedResults.detection.imageWidth - resizedResults.detection.box.bottomLeft.x),    // Invirtiendo eje x
-                  y: resizedResults.detection.box.topRight.y,
-                },
-                bottomLeft: {
-                  x: (resizedResults.detection.imageWidth - resizedResults.detection.box.topRight.x),     // Invirtiendo eje x
-                  y: resizedResults.detection.box.bottomLeft.y
-                },
-                bottomRight: {
-                  x: (resizedResults.detection.imageWidth - resizedResults.detection.box.topLeft.x),      // Invirtiendo eje x
-                  y: resizedResults.detection.box.bottomRight.y
-                }
+            /* Calculating Circle Boundaries */
+            // Get boundingClientRect of the canvas
+            const canvasRect = canvas.getBoundingClientRect();
+            // Getting coordinates of the circle focus, with respect to the canvas
+            const circleFocus = document.getElementsByClassName('circle-focus')?.[0]
+            const circleFocusRect = circleFocus?.getBoundingClientRect()
+            let circleFocusRectRealCoordinates = {
+              left: circleFocusRect.left - canvasRect.left,
+              top: circleFocusRect.top - canvasRect.top,
+              width: circleFocusRect.width,
+              height: circleFocusRect.height,
+              right: circleFocusRect.right - canvasRect.left,
+              bottom: circleFocusRect.bottom - canvasRect.top,
+            }
+            const circleRectCorners = {
+              topLeft: {
+                x: circleFocusRectRealCoordinates.left,
+                y: circleFocusRectRealCoordinates.top,
+              },
+              topRight: {
+                x: circleFocusRectRealCoordinates.right,
+                y: circleFocusRectRealCoordinates.top,
+              },
+              bottomLeft: {
+                x: circleFocusRectRealCoordinates.left,
+                y: circleFocusRectRealCoordinates.bottom,
+              },
+              bottomRight: {
+                x: circleFocusRectRealCoordinates.right,
+                y: circleFocusRectRealCoordinates.bottom,
+              },
+            };
+            setCircleFocusBoundaryRectangle(circleRectCorners)
+
+
+
+            const valid = isRetangleInside(circleRectCorners, smallRectRealCoordinates)
+            console.log(valid)
+            setIsValid(valid)
+
+            // Draw the rectangle on the canvas
+            context.strokeStyle = valid ? 'green' : 'red';
+            context.lineWidth = 2;
+            context.strokeRect(
+              smallRect.topLeft.x,
+              smallRect.topLeft.y,
+              smallRect.bottomRight.x - smallRect.topLeft.x,
+              smallRect.bottomRight.y - smallRect.topLeft.y
+            );
+
+            if (areRectanglesDifferent(newFaceRectangle, faceRectangle)) {
+              setFaceRectangle(newFaceRectangle),
+              setAdjustedFaceRectangle(smallRect)
+              setAdjustedFaceRectangleCoordinates(smallRectRealCoordinates)
+            } else if (areRectanglesDifferent(faceRectangle, { topLeft: { x: 0, y: 0 }, bottomRight: { x: 0, y: 0 } } )) {
+              setFaceRectangle({
+                topLeft: { x: 0, y: 0 },
+                bottomRight: { x: 0, y: 0 }
+              })
+              setAdjustedFaceRectangle({
+                topLeft: { x: 0, y: 0 },
+                bottomRight: { x: 0, y: 0 }
+              })
+              
+            }
+
+
+            /* Setting mood/expression */
+            let expressions = resizedResults?.expressions
+            if (expressions) {
+              let currentExpression = Object.entries(expressions).reduce((max, current) => max[1] > current[1] ? max : current)
+              setExpression(currentExpression)
+            }
+
+            /* Setting and drawing age and gender */
+            let ageGenderResults = fullFaceDescriptions;
+            if (Object.entries(ageGenderResults).length){
+              const now = Date.now();
+              if (now - lastAgeUpdate > ageUpdateInterval) {
+                ageGenderResults = await faceapi.detectSingleFace(video,  new faceapi.TinyFaceDetectorOptions({inputSize: 160}))
+                  .withAgeAndGender();
+                lastAgeUpdate = now;
               }
-              const margin = 20;
-              // Rectangle to be drawn in the canvas
-              const smallRect = {
-                topLeft: {
-                  x: resizedResults.detection.box.topLeft.x + 2*margin,
-                  y: resizedResults.detection.box.topLeft.y + margin
-                },
-                topRight: {
-                  x: resizedResults.detection.box.topRight.x - 2*margin,
-                  y: resizedResults.detection.box.topRight.y + margin
-                },
-                bottomRight: {
-                  x: resizedResults.detection.box.bottomRight.x - 2*margin,
-                  y: resizedResults.detection.box.bottomRight.y - margin
-                },
-                bottomLeft: {
-                  x: resizedResults.detection.box.bottomLeft.x + 2*margin,
-                  y: resizedResults.detection.box.bottomLeft.y - margin
-                }
-              }
+              
+              if (ageGenderResults) {
+                const { age, gender, genderProbability } = ageGenderResults;
+                const interpolatedAge = interpolateAgePredictions(age)
 
-              // Draw the rectangle on the canvas
-              context.strokeStyle = 'red';
-              context.lineWidth = 2;
-              context.strokeRect(
-                smallRect.topLeft.x,
-                smallRect.topLeft.y,
-                smallRect.bottomRight.x - smallRect.topLeft.x,
-                smallRect.bottomRight.y - smallRect.topLeft.y
-              );
+                const ageText = `${faceapi.utils.round(interpolatedAge, 0)} years`;
+                const genderText = `${gender} (${faceapi.utils.round(genderProbability)})`;
 
-              // Real coordinates of the rectangle
-              const smallRectRealCoordinates = {
-                topLeft: {
-                  x: (resizedResults.detection.imageWidth - resizedResults.detection.box.bottomRight.x) + 2*margin,
-                  y: resizedResults.detection.box.topLeft.y + margin
-                },
-                topRight: {
-                  x: (resizedResults.detection.imageWidth - resizedResults.detection.box.bottomLeft.x) - 2*margin,
-                  y: resizedResults.detection.box.topRight.y + margin
-                },
-                bottomRight: {
-                  x: (resizedResults.detection.imageWidth - resizedResults.detection.box.topLeft.x) - 2*margin,
-                  y: resizedResults.detection.box.bottomRight.y - margin
-                },
-                bottomLeft: {
-                  x: (resizedResults.detection.imageWidth - resizedResults.detection.box.topRight.x) + 2*margin,
-                  y: resizedResults.detection.box.bottomLeft.y - margin
-                }
-              }
+                const textX = resizedResults.detection.box.bottomRight.x;
+                const textY = resizedResults.detection.box.bottomRight.y;
 
-              if (areRectanglesDifferent(newFaceRectangle, faceRectangle)) {
-                setFaceRectangle(newFaceRectangle),
-                setAdjustedFaceRectangle(smallRect)
-                setAdjustedFaceRectangleCoordinates(smallRectRealCoordinates)
-              } else if (areRectanglesDifferent(faceRectangle, { topLeft: { x: 0, y: 0 }, bottomRight: { x: 0, y: 0 } } )) {
-                setFaceRectangle({
-                  topLeft: { x: 0, y: 0 },
-                  bottomRight: { x: 0, y: 0 }
-                })
-                setAdjustedFaceRectangle({
-                  topLeft: { x: 0, y: 0 },
-                  bottomRight: { x: 0, y: 0 }
-                })
-              }
+                context.save();
+                context.scale(-1, 1);
+                context.translate(-canvas.width, 0);
 
-              let expressions = resizedResults?.expressions
-              if (expressions) {
-                let currentExpression = Object.entries(expressions).reduce((max, current) => max[1] > current[1] ? max : current)
-                setExpression(currentExpression)
-              }
-              let circle = document.getElementsByClassName('circle-focus')?.[0]
-              let circleRect = circle?.getBoundingClientRect()
+                context.font = '16px Arial';
+                context.fillStyle = 'white';
+                context.strokeStyle = 'black';
+                context.lineWidth = 2;
 
-              let ageGenderResults = fullFaceDescriptions;
-              if (Object.entries(ageGenderResults).length){
-                const now = Date.now();
-                if (now - lastAgeUpdate > ageUpdateInterval) {
-                  ageGenderResults = await faceapi.detectSingleFace(video,  new faceapi.TinyFaceDetectorOptions({inputSize: 160}))
-                    .withAgeAndGender();
-                  lastAgeUpdate = now;
-                }
-                
-                if (ageGenderResults) {
-                  const { age, gender, genderProbability } = ageGenderResults;
-                  const interpolatedAge = interpolateAgePredictions(age)
+                context.strokeText(ageText, canvas.width - textX + 2*margin, textY);
+                context.fillText(ageText, canvas.width - textX + 2*margin, textY);
+                context.strokeText(genderText, canvas.width - textX + 2*margin, textY + margin);
+                context.fillText(genderText, canvas.width - textX + 2*margin, textY + margin);
 
-                  const ageText = `${faceapi.utils.round(interpolatedAge, 0)} years`;
-                  const genderText = `${gender} (${faceapi.utils.round(genderProbability)})`;
-
-                  const textX = resizedResults.detection.box.bottomRight.x;
-                  const textY = resizedResults.detection.box.bottomRight.y;
-
-                  context.save();
-                  context.scale(-1, 1);
-                  context.translate(-canvas.width, 0);
-
-                  context.font = '16px Arial';
-                  context.fillStyle = 'white';
-                  context.strokeStyle = 'black';
-                  context.lineWidth = 2;
-
-                  context.strokeText(ageText, canvas.width - textX + 2*margin, textY);
-                  context.fillText(ageText, canvas.width - textX + 2*margin, textY);
-                  context.strokeText(genderText, canvas.width - textX + 2*margin, textY + margin);
-                  context.fillText(genderText, canvas.width - textX + 2*margin, textY + margin);
-
-                  context.restore();
-                }
+                context.restore();
               }
             }
           }
+        } else {
+          setIsValid(false)
+          context.clearRect(0, 0, canvas.width, canvas.height);
+        }
         requestAnimationFrame(detect);
       }
     }
@@ -297,6 +380,14 @@ function Liveness() {
     if (isCameraShown) {
       detect();
     }
+
+    // Start detection if the video is played
+    video?.addEventListener('play', () => {
+      if (isCameraShown) {
+        detect();
+      }
+    });
+
   }
  
   const onPause = () => {
@@ -319,7 +410,7 @@ function Liveness() {
       />
       <div className="card">
 
-        <CameraContainer onPlay={onPlay} />
+        <CameraContainer onPlay={onPlay} isValid={isValid} />
 
         <div className='flex gap-1'>
           <button onClick={activateCamera}>
