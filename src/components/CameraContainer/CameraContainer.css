@@ -13,26 +13,27 @@
   object-fit: fill;
 }
 
-#overlay {
+canvas#overlay {
   border: 1px solid gray;
   position: absolute;
   top:0;
   left:0;
   width: 100%;
-  height: 400px;
+  height: 100%;
+  border: 2px solid green;
   transform: scaleX(-1); /* Both inverted */
 }
 
 .camera-container {
   max-width: max(100%, 600px);
-  width: 600px;
-  height: 400px; /* Altura del padre de la .mask y .circle-focus */
+  width: 640px;
+  height: 480px; /* Altura del padre de la .mask y .circle-focus */
   position: relative;
   background-color: aqua;
 }
 
 .circle-focus { /* To be used for detecting colission; */
-  height: 95%; /* 95% del padre de 400px; 380px  */
+  height:80%; /* 80% del padre de 480px; 384px  */
   aspect-ratio: 1/1;
   border: 1px solid red;
   position: absolute;
@@ -49,7 +50,7 @@
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.75); /* Oscurece el fondo */
-  -webkit-mask-image: radial-gradient(circle 190px at center, transparent 190px, black 10px); /* La mitad de 360px; el diametro del .circle-focus */
-  mask-image: radial-gradient(circle 190px at center, transparent 190px, black 10px);
+  -webkit-mask-image: radial-gradient(circle 192px at center, transparent 192px, black 10px); /* La mitad de 384; el diametro del .circle-focus */
+  mask-image: radial-gradient(circle 192px at center, transparent 192px, black 10px);
   pointer-events: none; /* Evita que bloquee interacciones con el video */
 }
