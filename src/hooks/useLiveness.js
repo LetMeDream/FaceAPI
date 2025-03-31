@@ -216,7 +216,7 @@ const useLiveness = () => {
 
 
             // Real coordinates of the rectangle (According to the canvas and inverted)
-            const smallRectRealCoordinates = {
+            let smallRectRealCoordinates = {
               topLeft: {
                 x: (resizedResults.detection.imageWidth - resizedResults.detection.box.bottomRight.x) + 2*margin,  // Inverting coordinates
                 y: resizedResults.detection.box.topLeft.y + margin
@@ -234,6 +234,10 @@ const useLiveness = () => {
                 y: resizedResults.detection.box.bottomLeft.y - margin
               }
             }
+            /* But, if our parent <div> container is smaller than the 640px that the library seems to require, then we need to make a transformation to our coordinates */
+            const containerDiv = document.getElementsByClassName('camera-container')?.[0]
+            const styles = getComputedStyle(containerDiv);
+            const containerWidth = parseFloat(styles.getPropertyValue('--main-width'))
 
             /* Calculating Circle Boundaries */
             // Get boundingClientRect of the canvas
@@ -269,9 +273,19 @@ const useLiveness = () => {
             };
             setCircleFocusBoundaryRectangle(circleRectCorners)
 
-
-
-            const valid = isRetangleInside(circleRectCorners, smallRectRealCoordinates)
+            let valid, modifiedSmallRectRealCoorinates
+            if (containerDiv.clientWidth < containerWidth){
+              let scaleFactor = containerDiv.clientWidth / containerWidth
+              modifiedSmallRectRealCoorinates = Object.fromEntries(
+                Object.entries(smallRectRealCoordinates).map(([key, { x, y }]) => [
+                  key,
+                  { x: x * scaleFactor, y },
+                ])
+              );
+              valid = isRetangleInside(circleRectCorners, modifiedSmallRectRealCoorinates)
+            } else {
+              valid = isRetangleInside(circleRectCorners, smallRectRealCoordinates)
+            }
             setIsValid(valid)
 
             // Draw the rectangle on the canvas
