@@ -37,93 +37,93 @@ const useLiveness = () => {
   let lastAgeUpdate = Date.now();
   const ageUpdateInterval = 1000;
 
-    /* UseEffect for handling validation when no face detected */
-    useEffect(() => {
-      console.log(validObject.counter);
-      if (validObject.counter > 20 && !validObject.alerted) {
-        setValidObject((prev) => {
-          return {
-            ...prev,
-            alerted: true
-          }
-        })
-        setIsValid(false)
-        toast.error('Face not detected')
-      }
-    }, [validObject.counter]);
-  
-    /* circle-focus rect boundary */
-    useEffect(() => {
-      if (
-        circleFocusBoundaryRectangle &&
-        JSON.stringify(circleFocusBoundaryRectangle) !== JSON.stringify(prevCircleFocusBoundaryRectangle)
-      ) {
-        console.log(circleFocusBoundaryRectangle);
-        setPrevCircleFocusBoundaryRectangle(circleFocusBoundaryRectangle);
-      }
-    }, [circleFocusBoundaryRectangle, prevCircleFocusBoundaryRectangle]);
-  
-    const activateCamera = async () => {
-      if (!isCameraShown){
-        setIsCameraShown(true)
-        setIsPlaying(true)
-        const video = document.getElementById('video')
-        console.log(video)
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: {}
-          })
-          video.srcObject = stream
-          video.onplay = onPlay
-        } catch (error) {
-          console.error(error)
-          toast.error(error?.message)
+  /* UseEffect for handling validation when no face detected */
+  useEffect(() => {
+    console.log(validObject.counter);
+    if (validObject.counter > 20 && !validObject.alerted) {
+      setValidObject((prev) => {
+        return {
+          ...prev,
+          alerted: true
         }
-      } else {
-        setIsCameraShown(false)
-        setIsPlaying(false)
-        setExpression(null)
-        let canvas = document.getElementById('overlay')
-        let context = canvas.getContext('2d');
-        // debugger
-        let video = document.getElementById('video')
-        let stream = video?.srcObject
-        let tracks = stream?.getTracks()
-        
-        tracks?.forEach(track => {
-          track?.stop()
-        })
-        
-        // Use requestAnimationFrame to ensure the canvas is updated
-        setTimeout(() => {
-          context.clearRect(0, 0, canvas.width, canvas.height);
-        }, 10);
-  
-  
-        video.srcObject = null
-      }
+      })
+      setIsValid(false)
+      toast.error('Face not detected')
     }
-  
-    /* Load models */
-    useEffect(() => {
-      const loadModels = async () => {
-        const MODEL_URL = "models";
-        try {
-          await Promise.all([
-            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-            faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
-            faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL)
-          ]);
-          setModelsLoaded(true);
-        } catch (err) {
-          console.error(err);
-        }
-      };
-  
-      loadModels();
-    }, []);
+  }, [validObject.counter]);
+
+  /* circle-focus rect boundary */
+  useEffect(() => {
+    if (
+      circleFocusBoundaryRectangle &&
+      JSON.stringify(circleFocusBoundaryRectangle) !== JSON.stringify(prevCircleFocusBoundaryRectangle)
+    ) {
+      console.log(circleFocusBoundaryRectangle);
+      setPrevCircleFocusBoundaryRectangle(circleFocusBoundaryRectangle);
+    }
+  }, [circleFocusBoundaryRectangle, prevCircleFocusBoundaryRectangle]);
+
+  const activateCamera = async () => {
+    if (!isCameraShown){
+      setIsCameraShown(true)
+      setIsPlaying(true)
+      const video = document.getElementById('video')
+      console.log(video)
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {}
+        })
+        video.srcObject = stream
+        video.onplay = onPlay
+      } catch (error) {
+        console.error(error)
+        toast.error(error?.message)
+      }
+    } else {
+      setIsCameraShown(false)
+      setIsPlaying(false)
+      setExpression(null)
+      let canvas = document.getElementById('overlay')
+      let context = canvas.getContext('2d');
+      // debugger
+      let video = document.getElementById('video')
+      let stream = video?.srcObject
+      let tracks = stream?.getTracks()
+      
+      tracks?.forEach(track => {
+        track?.stop()
+      })
+      
+      // Use requestAnimationFrame to ensure the canvas is updated
+      setTimeout(() => {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+      }, 10);
+
+
+      video.srcObject = null
+    }
+  }
+
+  /* Load models */
+  useEffect(() => {
+    const loadModels = async () => {
+      const MODEL_URL = "models";
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+          faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL)
+        ]);
+        setModelsLoaded(true);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadModels();
+  }, []);
   
 
   /* Function to be played on video load .

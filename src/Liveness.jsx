@@ -16,23 +16,6 @@ function Liveness() {
     adjustedFaceRectangleCoordinates
   } = useLiveness()
 
-
-  
-
-  /* Tracking face rectangle */
-  /* useEffect(() => {
-    console.log('TopLeft. X: ' + faceRectangle?.topLeft?.x + ', Y:' + faceRectangle?.topLeft?.x)
-  }, [
-    faceRectangle,
-    faceRectangle?.topLeft?.x, 
-    faceRectangle?.topLeft?.y, 
-    faceRectangle?.bottomRight?.x, 
-    faceRectangle?.bottomRight?.y,
-  ]) */
-
-
-
-
   return (
     <>
       <Toaster
