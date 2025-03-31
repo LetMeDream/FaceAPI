@@ -25,22 +25,16 @@ canvas#overlay {
 }
 
 .camera-container {
+  /* Variables */
+  --main-width: 640px;  /* Needs to be 640px */
+  --main-height: 480px; /* Needs to be 480px */
+  --circle-focus-height: 80%;
+
   max-width: max(100%, 600px);
-  width: 640px;
-  height: 480px; /* Altura del padre de la .mask y .circle-focus */
+  width: var(--main-width);
+  height: var(--main-height); /* Altura del padre de la .mask y .circle-focus */
   position: relative;
   background-color: aqua;
-}
-
-.circle-focus { /* To be used for detecting colission; */
-  height:80%; /* 80% del padre de 480px; 384px  */
-  aspect-ratio: 1/1;
-  border: 1px solid red;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  border-radius: 100%;
 }
 
 .mask {
@@ -50,7 +44,8 @@ canvas#overlay {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.75); /* Oscurece el fondo */
-  -webkit-mask-image: radial-gradient(circle 192px at center, transparent 192px, black 10px); /* La mitad de 384; el diametro del .circle-focus */
-  mask-image: radial-gradient(circle 192px at center, transparent 192px, black 10px);
+  -webkit-mask-image: radial-gradient(circle var(--mask-image-radius) at center, transparent var(--mask-image-radius), black 10px); /* La mitad del diámetro del .circle-focus */
+  mask-image: radial-gradient(circle var(--mask-image-radius) at center, transparent var(--mask-image-radius), black 10px); /* (--main-height*--main-width) / 2; calculado en useEffect */
+  
   pointer-events: none; /* Evita que bloquee interacciones con el video */
 }
