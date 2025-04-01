@@ -273,16 +273,17 @@ const useLiveness = () => {
             };
             setCircleFocusBoundaryRectangle(circleRectCorners)
 
-            let valid, modifiedSmallRectRealCoorinates
+            let valid, responsiveSmallRectRealCoorinates
+            /* Is current container smaller than required? */
             if (containerDiv.clientWidth < containerWidth){
               let scaleFactor = containerDiv.clientWidth / containerWidth
-              modifiedSmallRectRealCoorinates = Object.fromEntries(
+              responsiveSmallRectRealCoorinates = Object.fromEntries(
                 Object.entries(smallRectRealCoordinates).map(([key, { x, y }]) => [
                   key,
                   { x: x * scaleFactor, y },
                 ])
               );
-              valid = isRetangleInside(circleRectCorners, modifiedSmallRectRealCoorinates)
+              valid = isRetangleInside(circleRectCorners, responsiveSmallRectRealCoorinates)
             } else {
               valid = isRetangleInside(circleRectCorners, smallRectRealCoordinates)
             }
@@ -301,7 +302,7 @@ const useLiveness = () => {
             if (areRectanglesDifferent(newFaceRectangle, faceRectangle)) {
               setFaceRectangle(newFaceRectangle),
               setAdjustedFaceRectangle(smallRect)
-              setAdjustedFaceRectangleCoordinates(smallRectRealCoordinates)
+              setAdjustedFaceRectangleCoordinates((containerDiv.clientWidth < containerWidth) ? responsiveSmallRectRealCoorinates : smallRectRealCoordinates)
             } else if (areRectanglesDifferent(faceRectangle, { topLeft: { x: 0, y: 0 }, bottomRight: { x: 0, y: 0 } } )) {
               setFaceRectangle({
                 topLeft: { x: 0, y: 0 },
