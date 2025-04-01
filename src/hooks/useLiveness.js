@@ -143,7 +143,7 @@ const useLiveness = () => {
           return; // Stoping detection if video is paused oor ended
         }
 
-        const fullFaceDescriptions = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize: 320}))
+        const fullFaceDescriptions = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize: 288}))
           .withFaceLandmarks()
           .withFaceDescriptor()
           .withFaceExpressions()
@@ -243,7 +243,7 @@ const useLiveness = () => {
             // Get boundingClientRect of the canvas
             const canvasRect = canvas.getBoundingClientRect();
             // Getting coordinates of the circle focus, with respect to the canvas
-            const circleFocus = document.getElementsByClassName('circle-focus')?.[0]
+            const circleFocus = document.getElementById('circle-mask')
             const circleFocusRect = circleFocus?.getBoundingClientRect()
             let circleFocusRectRealCoordinates = {
               left: circleFocusRect.left - canvasRect.left,
