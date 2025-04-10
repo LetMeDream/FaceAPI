@@ -23,28 +23,28 @@ const CameraContainer = ({
 }) => {
 
   return (
-        <div className='camera-container'
-        >
-          <video
-            autoPlay
-            playsInline
-            muted
-            id="video"
-            className="camera"
-            onLoadedMetadata={() => onPlay(this)}
-          ></video>
-          
-          <div className="mask"></div>
-          
-          <canvas
-            id='overlay'  
-          />
+    <div className='camera-container'
+    >
+      <video
+        autoPlay
+        playsInline
+        muted
+        id="video"
+        className="camera"
+        onLoadedMetadata={() => onPlay(this)}
+      ></video>
+      
+      <div className="mask"></div>
+      
+      <canvas
+        id='overlay'  
+      />
 
-          <StyledCircleFocus 
-            id='circle-mask' 
-            isValid={isValid}
-          />
-        </div>
+      <StyledCircleFocus 
+        id='circle-mask' 
+        isValid={isValid}
+      />
+    </div>
 
   )
 }

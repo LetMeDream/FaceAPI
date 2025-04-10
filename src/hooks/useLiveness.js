@@ -234,11 +234,11 @@ const useLiveness = () => {
                 y: resizedResults.detection.box.bottomLeft.y - margin
               }
             }
-            /* But, if our parent <div> container is smaller than the 640px that the library seems to require, then we need to make a transformation to our coordinates */
-            const containerDiv = document.getElementsByClassName('camera-container')?.[0]
+            /* But, if our Video Element is smaller than the 640px that the library seems to require, then we need to make a transformation to our coordinates */
+            const containerDiv = document.getElementById('video')
             const styles = getComputedStyle(containerDiv);
             const containerWidth = parseFloat(styles.getPropertyValue('--main-width'))
-
+            const containerHeight = parseFloat(styles.getPropertyValue('--main-height'))
             /* Calculating Circle Boundaries */
             // Get boundingClientRect of the canvas
             const canvasRect = canvas.getBoundingClientRect();
@@ -276,11 +276,12 @@ const useLiveness = () => {
             let valid, responsiveSmallRectRealCoorinates
             /* Is current container smaller than required? */
             if (containerDiv.clientWidth < containerWidth){
-              let scaleFactor = containerDiv.clientWidth / containerWidth
+              let xScaleFactor = containerDiv.clientWidth / containerWidth
+              let yScaleFactor = containerDiv.clientHeight / containerHeight
               responsiveSmallRectRealCoorinates = Object.fromEntries(
                 Object.entries(smallRectRealCoordinates).map(([key, { x, y }]) => [
                   key,
-                  { x: x * scaleFactor, y },
+                  { x: x * xScaleFactor, y: y * yScaleFactor },
                 ])
               );
               valid = isRetangleInside(circleRectCorners, responsiveSmallRectRealCoorinates)
@@ -397,6 +398,8 @@ const useLiveness = () => {
     let video = document.getElementById('video')
     video.pause()
     setIsPlaying(false)
+    console.log(adjustedFaceRectangleCoordinates?.topLeft, adjustedFaceRectangleCoordinates?.bottomRight)
+    console.log(circleFocusBoundaryRectangle?.topLeft, circleFocusBoundaryRectangle?.bottomRight)
   }
 
   /* Resuming video */
