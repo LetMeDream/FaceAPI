@@ -13,7 +13,8 @@ function Liveness() {
     isCameraShown,
     isPlaying,
     expression,
-    adjustedFaceRectangleCoordinates
+    adjustedFaceRectangleCoordinates,
+    headOrientation
   } = useLiveness()
 
   return (
@@ -24,7 +25,10 @@ function Liveness() {
       />
       <div className="card">
 
-        <CameraContainer onPlay={onPlay} isValid={isValid} />
+        <CameraContainer 
+          onPlay={onPlay} 
+          isValid={isValid} 
+        />
 
         <div className='flex gap-1'>
           <button onClick={activateCamera}>
@@ -42,6 +46,7 @@ function Liveness() {
         {
           isCameraShown ? (
             <div className='info flex flex-col gap-2'>
+
               <div className="mood border border-blue-100 p-4 rounded">
                 <span>
                   Status: &nbsp;
@@ -50,6 +55,16 @@ function Liveness() {
                   </span> 
                 </span>
               </div>
+
+              <div className="mood border border-blue-100 p-4 rounded">
+                <span>
+                  Head direction: &nbsp;
+                  <span className='text-slate-500'>
+                    {headOrientation}
+                  </span> 
+                </span>
+              </div>
+
               <div className="mood border border-blue-100 p-4 rounded">
                 <span>
                   Current Mood: &nbsp;
@@ -58,6 +73,7 @@ function Liveness() {
                   </span> 
                 </span>
               </div>
+
               {/* <div className="mood border border-blue-100 p-4 rounded">
                 Current Position: &nbsp;
                 <span className='text-slate-500'>
