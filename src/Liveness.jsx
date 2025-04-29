@@ -14,7 +14,9 @@ function Liveness() {
     isPlaying,
     expression,
     adjustedFaceRectangleCoordinates,
-    headOrientation
+    headOrientation,
+    instruction,
+    successSoundRef
   } = useLiveness()
 
   return (
@@ -24,7 +26,11 @@ function Liveness() {
         reverseOrder={false}
       />
       <div className="card">
-
+        <audio
+          ref={successSoundRef}
+          src="public/sounds/success.mp3"
+          preload="auto"
+        />
         <CameraContainer 
           onPlay={onPlay} 
           isValid={isValid} 
@@ -48,28 +54,41 @@ function Liveness() {
             <div className='info flex flex-col gap-2'>
 
               <div className="mood border border-blue-100 p-4 rounded">
+                  <span>
+                    Instruction: &nbsp;
+                    <span className='text-slate-500'>
+                      {instruction}
+                    </span> 
+                  </span>
+                </div>
+
+              <div className='flex gap-2'>
+
+                <div className="mood border border-blue-100 p-4 rounded">
+                  <span>
+                    Head direction: &nbsp;
+                    <span className='text-slate-500'>
+                      {headOrientation}
+                    </span> 
+                  </span>
+                </div>
+
+                <div className="mood border border-blue-100 p-4 rounded">
+                  <span>
+                    Current Mood: &nbsp;
+                    <span className='text-slate-500'>
+                      {expression?.[0] || ''}
+                    </span> 
+                  </span>
+                </div>
+              
+              </div>
+
+              <div className="mood border border-blue-100 p-4 rounded">
                 <span>
                   Status: &nbsp;
                   <span className='text-slate-500'>
                     {isValid ? 'Valid' : 'Invalid'}
-                  </span> 
-                </span>
-              </div>
-
-              <div className="mood border border-blue-100 p-4 rounded">
-                <span>
-                  Head direction: &nbsp;
-                  <span className='text-slate-500'>
-                    {headOrientation}
-                  </span> 
-                </span>
-              </div>
-
-              <div className="mood border border-blue-100 p-4 rounded">
-                <span>
-                  Current Mood: &nbsp;
-                  <span className='text-slate-500'>
-                    {expression?.[0] || ''}
                   </span> 
                 </span>
               </div>

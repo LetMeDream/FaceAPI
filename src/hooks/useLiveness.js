@@ -1,7 +1,9 @@
 import * as faceapi from 'face-api.js'
 import { useState, useEffect } from 'react'
-import { interpolateAgePredictions, isRetangleInside, areRectanglesDifferent } from '../helpers/liveness'
+import { interpolateAgePredictions, isRetangleInside, areRectanglesDifferent, getInvertedFaceRectangle, getSmallRectangle, getSmallRectangleRealCoordinates } from '../helpers/liveness'
 import toast from 'react-hot-toast'
+import { calculateOrientation } from '../helpers/liveness'
+import { useRef } from 'react'
 
 const useLiveness = () => {
   const [isCameraShown, setIsCameraShown] = useState(false)
@@ -30,7 +32,22 @@ const useLiveness = () => {
     alerted: false
   })
   const [headOrientation, setHeadOrientation] = useState('center'); // State for storing head orientation
+  const [detection, setDetection] = useState(null); // State for storing the detection result
 
+  const [, setFaceInsideRectangle] = useState(null)
+  const successSoundRef = useRef(null);
+
+  const playSuccessSound = () => {
+    if (successSoundRef.current) {
+      successSoundRef.current.play();
+    }
+  };
+
+  const handleStepCompletionSound = () => {
+    // Logic for your liveness detection step completion
+    console.log("Step completed!");
+    playSuccessSound();
+  };
 
   /* Expression */
   const [expression, setExpression] = useState(null)
@@ -42,7 +59,7 @@ const useLiveness = () => {
   /* UseEffect for handling validation when no face detected */
   useEffect(() => {
     // console.log(validObject.counter);
-    if (validObject.counter > 20 && !validObject.alerted) {
+    if (validObject.counter > 200 && !validObject.alerted) {
       setValidObject((prev) => {
         return {
           ...prev,
@@ -63,9 +80,15 @@ const useLiveness = () => {
       console.log(circleFocusBoundaryRectangle);
       setPrevCircleFocusBoundaryRectangle(circleFocusBoundaryRectangle);
     }
-  }, [circleFocusBoundaryRectangle, prevCircleFocusBoundaryRectangle]);
+  }, [circleFocusBoundaryRectangle, prevCircleFocusBoundaryRectangle])
 
   const activateCamera = async () => {
+    let canvas = document.getElementById('overlay')
+    let context = canvas.getContext('2d')
+    setTimeout(() => {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+    }, 50);
+
     if (!isCameraShown){
       setIsCameraShown(true)
       setIsPlaying(true)
@@ -85,22 +108,14 @@ const useLiveness = () => {
       setIsCameraShown(false)
       setIsPlaying(false)
       setExpression(null)
-      let canvas = document.getElementById('overlay')
-      let context = canvas.getContext('2d');
-      // debugger
       let video = document.getElementById('video')
       let stream = video?.srcObject
       let tracks = stream?.getTracks()
-      
+  
       tracks?.forEach(track => {
         track?.stop()
       })
       
-      // Use requestAnimationFrame to ensure the canvas is updated
-      setTimeout(() => {
-        context.clearRect(0, 0, canvas.width, canvas.height);
-      }, 10);
-
 
       video.srcObject = null
     }
@@ -126,90 +141,97 @@ const useLiveness = () => {
 
     loadModels();
   }, []);
+
+  const [stepIndex, setStepIndex] = useState(0);
+  const steps = [
+    'Mira al frente',
+    'Gira la cabeza a la izquierda',
+    'Gira la cabeza a la derecha',
+    'Sonríe',
+    'Finalizado',
+  ];
+  const [instruction, setInstruction] = useState(steps[stepIndex]);
+  const [isIntructionStarted, setIsIntructionStarted] = useState(false)
+
+  useEffect(() => {  
+    if (isValid && isIntructionStarted){
+      const landmarks = detection?.landmarks?.positions;
   
+      if (!landmarks) return;
+    
+      const point1 = landmarks[1];   // Left cheek
+      const point15 = landmarks[15]; // Right cheek
+      const point30 = landmarks[30]; // Nose tip
+    
+      const faceWidth = point15.x - point1.x;
+      const noseRelativeX = (point30.x - point1.x) / faceWidth;
+    
+      let satisfied = false;
+    
+      switch (instruction) {
+        case 'Sonríe':
+          satisfied = detection.expressions?.happy > 0.7;
+          break;
+        case 'Gira la cabeza a la derecha':
+          satisfied = noseRelativeX < 0.3;
+          break;
+        case 'Gira la cabeza a la izquierda':
+          satisfied = noseRelativeX > 0.7;
+          break;
+        case 'Mira al frente':
+          satisfied = noseRelativeX >= 0.45 && noseRelativeX <= 0.55;
+          break;
+        case 'Finalizado':
+          satisfied = false; // no avanzar
+          break;
+        default:
+          break;
+      }
+    
+      if (satisfied) {
+        if (stepIndex === steps.length - 2) handleStepCompletionSound()
+        // debugger
+        toast.success('🦄 Wow so easy!', {
+          position: "top-center",
+          autoClose: 3,
+          closeOnClick: false,
+          pauseOnHover: true,
+          draggable: true,
+          theme: "light",
+          });
+        setStepIndex((prev) =>{
+          setInstruction(steps[prev + 1])
+          return Math.min(prev + 1, steps.length - 1)
+        });
+      }
+    } else {
+      /* Reset instructions when !isValid (face ges ut of designed area) */
+      setStepIndex(0)
+      setInstruction(steps[0])
+    }
+  }, [detection, instruction, steps.length, isValid]);
+  
+  /* In order to delay the start of the guided instructions */
+  useEffect(() => {
+    setTimeout(() => {
+      if(stepIndex === 0) setIsIntructionStarted(true)
+    }, 5000)
+  }, [stepIndex])
+
 
   /* Function to be played on video load.
   * Will start detection and drawing.
   */
   const onPlay = async () => {
     if (!modelsLoaded) return;
+    setStepIndex(0)
+    setInstruction(steps[0])
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('overlay');
     if (!video || !canvas) return;
     const context = canvas.getContext('2d');
     const dims = faceapi.matchDimensions(canvas, video, true);
-
-    // Utility: Invert an x coordinate given the image width.
-    const invertX = (x, imageWidth, offset = 0) => {
-      return imageWidth - x + offset;
-    };
-
-    // Utility: Transform detection box coordinates.
-    const getInvertedFaceRectangle = (detection) => {
-      return {
-        topLeft: {
-          x: invertX(detection.box.bottomRight.x, detection.imageWidth),
-          y: detection.box.topLeft.y
-        },
-        topRight: {
-          x: invertX(detection.box.bottomLeft.x, detection.imageWidth),
-          y: detection.box.topRight.y
-        },
-        bottomLeft: {
-          x: invertX(detection.box.topRight.x, detection.imageWidth),
-          y: detection.box.bottomLeft.y
-        },
-        bottomRight: {
-          x: invertX(detection.box.topLeft.x, detection.imageWidth),
-          y: detection.box.bottomRight.y
-        }
-      };
-    };
-
-    // Utility: Get adjusted rectangle with margins.
-    const getSmallRectangle = (detection, margin) => {
-      return {
-        topLeft: {
-          x: detection.box.topLeft.x + 2 * margin,
-          y: detection.box.topLeft.y + margin
-        },
-        topRight: {
-          x: detection.box.topRight.x - 2 * margin,
-          y: detection.box.topRight.y + margin
-        },
-        bottomRight: {
-          x: detection.box.bottomRight.x - 2 * margin,
-          y: detection.box.bottomRight.y - margin
-        },
-        bottomLeft: {
-          x: detection.box.bottomLeft.x + 2 * margin,
-          y: detection.box.bottomLeft.y - margin
-        }
-      };
-    };
-
-    // Utility: Get real coordinates for the adjusted rectangle (inverted on x-axis)
-    const getSmallRectangleRealCoordinates = (detection, margin) => {
-      return {
-        topLeft: {
-          x: invertX(detection.box.bottomRight.x, detection.imageWidth, 2 * margin),
-          y: detection.box.topLeft.y + margin
-        },
-        topRight: {
-          x: invertX(detection.box.bottomLeft.x, detection.imageWidth, -2 * margin),
-          y: detection.box.topRight.y + margin
-        },
-        bottomRight: {
-          x: invertX(detection.box.topLeft.x, detection.imageWidth, -2 * margin),
-          y: detection.box.bottomRight.y - margin
-        },
-        bottomLeft: {
-          x: invertX(detection.box.topRight.x, detection.imageWidth, 2 * margin),
-          y: detection.box.bottomLeft.y - margin
-        }
-      };
-    };
 
     async function detect() {
       if (video.paused || video.ended) return; // Stop detection if video is paused or ended
@@ -227,6 +249,7 @@ const useLiveness = () => {
 
       if (fullFaceDescription) {
         const resizedResults = faceapi.resizeResults(fullFaceDescription, dims);
+        setDetection(resizedResults); // Store detection result
 
         // Draw important landmarks (for indexes 1, 15, 30)
         const importantLandmarks = [1, 15, 30];
@@ -241,17 +264,12 @@ const useLiveness = () => {
           }
         });
 
-        const point1 = landmarks[1];   // Left edge of face
-        const point15 = landmarks[15]; // Right edge of face
-        const point30 = landmarks[30]; // Nose tip
-
-        const faceWidth = point15.x - point1.x;
-        const noseRelativeX = (point30.x - point1.x) / faceWidth;
+        const orientation = calculateOrientation(resizedResults)
 
         // Define thresholds: centered ≈ 0.5
-        if (noseRelativeX < 0.4) {
+        if (orientation?.right) {
           setHeadOrientation('right'); // user's head is turned to THEIR right
-        } else if (noseRelativeX > 0.6) {
+        } else if (orientation?.left) {
           setHeadOrientation('left'); // user's head is turned to THEIR left
         } else {
           setHeadOrientation('center');
@@ -273,7 +291,7 @@ const useLiveness = () => {
           const containerWidthFromStyles = parseFloat(styles.getPropertyValue('--main-width'));
           if (containerDiv.clientWidth < containerWidthFromStyles) {
             const scaleFactor = containerDiv.clientWidth / containerWidthFromStyles;
-            responsiveSmallRectRealCoordinates = Object.fromEntries(
+            responsiveSmallRectRealCoordinates = Object.fromEntries( /* Bug possible place; check */
               Object.entries(smallRectRealCoordinates).map(([key, { x, y }]) => [
                 key,
                 { x: x * scaleFactor, y }
@@ -306,6 +324,8 @@ const useLiveness = () => {
             ? isRetangleInside(circleRectCorners, responsiveSmallRectRealCoordinates)
             : isRetangleInside(circleRectCorners, smallRectRealCoordinates);
           setIsValid(valid);
+
+          setFaceInsideRectangle(valid ? 'inside' : 'outside');
 
           // Draw the rectangle on the canvas with color based on validity
           context.strokeStyle = valid ? 'green' : 'red';
@@ -379,7 +399,7 @@ const useLiveness = () => {
       } else {
         // Increase counter if no face is detected
         setValidObject((prev) => ({ ...prev, counter: prev.counter + 1 }));
-        context.clearRect(0, 0, canvas.width, canvas.height);
+        // context.clearRect(0, 0, canvas.width, canvas.height);
       }
 
       // Continue the detection on next animation frame
@@ -402,6 +422,8 @@ const useLiveness = () => {
   
   /* Pausing video */
   const onPause = () => {
+    setStepIndex(0)
+    setInstruction(steps[0])
     let video = document.getElementById('video')
     video.pause()
     setIsPlaying(false)
@@ -415,6 +437,8 @@ const useLiveness = () => {
 
   /* Resuming video */
   const onResume = () => {
+    setStepIndex(0)
+    setInstruction(steps[0])
     let video = document.getElementById('video')
     video.play()
     setIsPlaying(true)
@@ -431,7 +455,9 @@ const useLiveness = () => {
     isPlaying,
     expression,
     adjustedFaceRectangleCoordinates,
-    headOrientation
+    headOrientation,
+    instruction,
+    successSoundRef,
   }
 }
 
