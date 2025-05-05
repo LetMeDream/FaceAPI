@@ -8,8 +8,8 @@ const StyledCircleFocus = styled.div.withConfig({
   max-width: max(90vw, var(--circle-mask-width)); /* 80% del padre de 480px; 384px */
   width: calc(var(--main-width) * 0.65);
   aspect-ratio: 1 / 1;
-  border: 1px solid ${({ isValid }) => (isValid ? 'green' : 'red')}; /* Cambia el color según isValid */
-  outline: ${({ isValid}) => (isValid ? '2px solid green' : '2px solid red')}; /* Cambia el color según isValid */
+  border: 1px solid ${({ isValid }) => (isValid ? '#6FCF97' : '#E57373')}; /* Cambia el color según isValid */
+  outline: ${({ isValid}) => (isValid ? '2px solid #6FCF97' : '2px solid #E57373')}; /* Cambia el color según isValid */
   position: absolute;
   top: 50%;
   left: 50%;
