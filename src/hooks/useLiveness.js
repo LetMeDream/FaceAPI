@@ -43,10 +43,11 @@ const useLiveness = () => {
     }
   };
 
-  const handleStepCompletionSound = () => {
+  const handleCompletition = () => {
     // Logic for your liveness detection step completion
-    console.log("Step completed!");
-    playSuccessSound();
+    console.log("Step completed!")
+    setIsLivenessCompleted(true)
+    playSuccessSound()
   };
 
   /* Expression */
@@ -141,83 +142,6 @@ const useLiveness = () => {
 
     loadModels();
   }, []);
-
-  const [stepIndex, setStepIndex] = useState(0);
-  const steps = [
-    'Mira al frente',
-    'Gira la cabeza a la izquierda',
-    'Gira la cabeza a la derecha',
-    'Sonríe',
-    'Finalizado',
-  ];
-  const [instruction, setInstruction] = useState(steps[stepIndex]);
-  const [isIntructionStarted, setIsIntructionStarted] = useState(false)
-
-  useEffect(() => {  
-    if (isValid && isIntructionStarted){
-      const landmarks = detection?.landmarks?.positions;
-  
-      if (!landmarks) return;
-    
-      const point1 = landmarks[1];   // Left cheek
-      const point15 = landmarks[15]; // Right cheek
-      const point30 = landmarks[30]; // Nose tip
-    
-      const faceWidth = point15.x - point1.x;
-      const noseRelativeX = (point30.x - point1.x) / faceWidth;
-    
-      let satisfied = false;
-    
-      switch (instruction) {
-        case 'Sonríe':
-          satisfied = detection.expressions?.happy > 0.7;
-          break;
-        case 'Gira la cabeza a la derecha':
-          satisfied = noseRelativeX < 0.3;
-          break;
-        case 'Gira la cabeza a la izquierda':
-          satisfied = noseRelativeX > 0.7;
-          break;
-        case 'Mira al frente':
-          satisfied = noseRelativeX >= 0.45 && noseRelativeX <= 0.55;
-          break;
-        case 'Finalizado':
-          satisfied = false; // no avanzar
-          break;
-        default:
-          break;
-      }
-    
-      if (satisfied) {
-        if (stepIndex === steps.length - 2) handleStepCompletionSound()
-        // debugger
-        toast.success('🦄 Wow so easy!', {
-          position: "top-center",
-          autoClose: 3,
-          closeOnClick: false,
-          pauseOnHover: true,
-          draggable: true,
-          theme: "light",
-          });
-        setStepIndex((prev) =>{
-          setInstruction(steps[prev + 1])
-          return Math.min(prev + 1, steps.length - 1)
-        });
-      }
-    } else {
-      /* Reset instructions when !isValid (face ges ut of designed area) */
-      setStepIndex(0)
-      setInstruction(steps[0])
-    }
-  }, [detection, instruction, steps.length, isValid]);
-  
-  /* In order to delay the start of the guided instructions */
-  useEffect(() => {
-    setTimeout(() => {
-      if(stepIndex === 0) setIsIntructionStarted(true)
-    }, 5000)
-  }, [stepIndex])
-
 
   /* Function to be played on video load.
   * Will start detection and drawing.
@@ -438,11 +362,107 @@ const useLiveness = () => {
   /* Resuming video */
   const onResume = () => {
     setStepIndex(0)
-    setInstruction(steps[0])
+    setInstruction(steps[0]?.instruction)
+    setIsLivenessCompleted(false)
+    setIsIntructionStarted(false)
+
     let video = document.getElementById('video')
     video.play()
     setIsPlaying(true)
   }
+
+  /* Liveness check */
+  const [stepIndex, setStepIndex] = useState(0);
+  const steps = [
+    {
+      instruction: 'Mira al frente', // "Look straight ahead"
+      // The function that checks if the 'Look straight ahead' condition is met
+      checkCondition: (detection) => calculateOrientation(detection, 0.45, 0.55)?.center
+    },
+    {
+      instruction: 'Gira la cabeza a la izquierda', // "Turn head left"
+      // The function that checks if the 'Turn head left' condition is met
+      checkCondition: (detection) => calculateOrientation(detection, undefined, 0.7)?.left
+    },
+    {
+      instruction: 'Gira la cabeza a la derecha', // "Turn head right"
+      // The function that checks if the 'Turn head right' condition is met
+      checkCondition: (detection) => calculateOrientation(detection, 0.3)?.right
+    },
+    {
+      instruction: 'Sonríe', // "Smile"
+      // The function that checks if the 'Smile' condition is met
+      checkCondition: (detection) => detection?.expressions?.happy > 0.7 // Added optional chaining for safety
+    },
+    {
+      instruction: 'Finalizado', // "Finished"
+      // For the 'Finished' step, the condition is always false to prevent automatic advancement
+      checkCondition: () => false
+    }
+  ];
+  const [instruction, setInstruction] = useState(steps[stepIndex]?.instruction);
+  const [isIntructionStarted, setIsIntructionStarted] = useState(false)
+  const [isLivenessCompleted, setIsLivenessCompleted] = useState(false)
+
+  /* Actual LIVENESS DETECTION */
+  useEffect(() => {  
+     // Ensure detection is valid, instruction has started, there's a 'detection' object, the index is valid and it hasn't completed the liveness check
+    if (isValid && isIntructionStarted && detection && stepIndex < (steps.length - 1) && !isLivenessCompleted) {    
+
+      // Get the current step object
+      const currentStep = steps[stepIndex];
+      let satisfied = false;
+
+      // Check if the current step has a checkCondition function and execute it
+      if (currentStep && typeof currentStep.checkCondition === 'function') {
+        try {
+          satisfied = currentStep.checkCondition(detection);
+        } catch (error) {
+           console.error("Error evaluating condition for step:", currentStep.instruction, error);
+           satisfied = false
+        }
+      } else {
+        console.warn("No checkCondition function found for step:", currentStep?.instruction);
+      }
+
+      // If the current step's condition is met...
+      if (satisfied) {
+        if (stepIndex === steps.length - 2) handleCompletition()
+
+        const nextStepIndex = stepIndex + 1;
+        if (nextStepIndex < (steps.length - 1)) {         // Check if there is a next step
+          setStepIndex(nextStepIndex); 
+          toast.success('Great!🎉 Keep going!', {
+            position: "top-center",
+            autoClose: 3,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            theme: "light",
+          });
+        } else {
+          // This was the last step (excluding 'Finalizado' logic if handled differently)
+          console.log("Liveness check sequence completed!");
+          setTimeout(() => {
+            onPause()
+          }, 1000)
+      }
+      }
+    }
+  }, [detection, instruction, steps.length, isValid]);
+  
+  /* In order to delay the start of the guided instructions */
+  useEffect(() => {
+    setTimeout(() => {
+      if(stepIndex === 0) setIsIntructionStarted(true)
+    }, 1000)
+  }, [stepIndex])
+
+  const instructionMessage = () => {
+    return steps[stepIndex]?.instruction || steps[stepIndex];
+  }
+
+
 
 
   return {
@@ -458,6 +478,7 @@ const useLiveness = () => {
     headOrientation,
     instruction,
     successSoundRef,
+    instructionMessage
   }
 }
 

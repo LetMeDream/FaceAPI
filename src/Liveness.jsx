@@ -15,7 +15,7 @@ function Liveness() {
     expression,
     adjustedFaceRectangleCoordinates,
     headOrientation,
-    instruction,
+    instructionMessage,
     successSoundRef
   } = useLiveness()
 
@@ -28,7 +28,7 @@ function Liveness() {
       <div className="card">
         <audio
           ref={successSoundRef}
-          src="public/sounds/success.mp3"
+          src="sounds/success.mp3"
           preload="auto"
         />
         <CameraContainer 
@@ -54,13 +54,13 @@ function Liveness() {
             <div className='info flex flex-col gap-2'>
 
               <div className="mood border border-blue-100 p-4 rounded">
-                  <span>
-                    Instruction: &nbsp;
-                    <span className='text-slate-500'>
-                      {instruction}
-                    </span> 
-                  </span>
-                </div>
+                <span>
+                  Instruction: &nbsp;
+                  <span className='text-slate-500'>
+                    {instructionMessage()}
+                  </span> 
+                </span>
+              </div>
 
               <div className='flex gap-2'>
 
@@ -93,12 +93,6 @@ function Liveness() {
                 </span>
               </div>
 
-              {/* <div className="mood border border-blue-100 p-4 rounded">
-                Current Position: &nbsp;
-                <span className='text-slate-500'>
-                  {faceRectangle?.topLeft?.x || ''}
-                </span> 
-              </div> */}
               <div className="mood border border-blue-100 p-4 rounded flex items-center">
                 Current Position: &nbsp;
                 <span className='text-slate-500 flex flex-col items-start gap-1 text-sm'>
