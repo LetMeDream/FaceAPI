@@ -99,31 +99,50 @@ export const getSmallRectangleRealCoordinates = (detection, margin) => {
 };
 
 /* Calculate Orientation */
-export const calculateOrientation = (detection) => {
-  const orientation = {
-    left: false,
-    right: false,
-    center: false
+export const calculateOrientation = (detection, rightReference = 0.4, leftReference = 0.6) => {
+  if (detection) {
+    const orientation = {
+      left: false,
+      right: false,
+      center: false
+    }
+    const landmarks = detection.landmarks.positions;
+  
+    const point1 = landmarks[1];   // Left edge of face
+    const point15 = landmarks[15]; // Right edge of face
+    const point30 = landmarks[30]; // Nose tip
+  
+    const faceWidth = point15.x - point1.x;
+    const noseRelativeX = (point30.x - point1.x) / faceWidth;
+  
+    if ((noseRelativeX < rightReference)) {
+      orientation.right = true;
+    } else if ((noseRelativeX > leftReference)) {
+      orientation.left = true;
+    } else if ((noseRelativeX >= 0.45 && noseRelativeX <= 0.55)) {
+      orientation.center = true;
+    }
+  
+    return orientation
   }
-  const importantLandmarks = [1, 15, 30];
-  const landmarks = detection.landmarks.positions;
+  return null
 
-  const point1 = landmarks[1];   // Left edge of face
-  const point15 = landmarks[15]; // Right edge of face
-  const point30 = landmarks[30]; // Nose tip
+}
 
-  const faceWidth = point15.x - point1.x;
-  const noseRelativeX = (point30.x - point1.x) / faceWidth;
+/* Draw landmarks */
+export const drawLandmarks = (canvas, detection, landmarks = []) => {
+  const ctx = canvas.getContext('2d');
+  const positions = detection.landmarks.positions;
+  ctx.fillStyle = 'gray';
 
-  if ((noseRelativeX < 0.4)) {
-    orientation.right = true;
-  } else if ((noseRelativeX > 0.6)) {
-    orientation.left = true;
-  } else {
-    orientation.center = true;
-  }
-
-  return orientation
+  positions.forEach((point, index) => {
+    if (landmarks.includes(index)) {
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 2, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.fillText(index, point.x + 3, point.y - 3);
+    }
+  });
 
 }
 
