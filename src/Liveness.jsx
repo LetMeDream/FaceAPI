@@ -2,6 +2,8 @@ import './App.css'
 import CameraContainer from './components/CameraContainer/CameraContainer'
 import { Toaster } from 'react-hot-toast'
 import useLiveness from './hooks/useLiveness'
+import Accordion from './components/Accordion/Accordion'
+
 
 function Liveness() {
   const {
@@ -37,7 +39,7 @@ function Liveness() {
         />
 
         <div className='flex gap-1'>
-          <button onClick={activateCamera}>
+          <button className='custom-btn' onClick={activateCamera}>
             Turn { isCameraShown ? 'off': 'on' } Camera
           </button>
           {
@@ -48,10 +50,11 @@ function Liveness() {
             ) : null
           }
         </div>
-
-        {
-          isCameraShown ? (
-            <div className='info flex flex-col gap-2'>
+        
+        <Accordion
+          title="Liveness Detection details"
+        >
+          <div className='info flex flex-col gap-2'>
 
               <div className="mood border border-blue-100 p-4 rounded">
                 <span>
@@ -169,10 +172,8 @@ function Liveness() {
 
                 </span> 
               </div>
-            </div>
-          ) : null
-        }
-        
+          </div>
+        </Accordion>
       </div>
     </>
   )
