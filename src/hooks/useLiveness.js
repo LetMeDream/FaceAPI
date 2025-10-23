@@ -180,11 +180,13 @@ const useLiveness = () => {
 
       if (fullFaceDescription) {
         const resizedResults = faceapi.resizeResults(fullFaceDescription, dims);
-        const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+        // * Logic for Drawing Face on the UploadComponent
+        // * It wasnt working.
+        /* const dataURL = canvas.toDataURL('image/jpeg', 0.8);
         let icon = document.getElementById('file-icon');
         if (icon) {
           icon.src = dataURL; // Update the icon with the current frame
-        }
+        } */
         setDetection(resizedResults); // Store detection result
 
         // Draw important landmarks (for indexes 1, 15, 30)
