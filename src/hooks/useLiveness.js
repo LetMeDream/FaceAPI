@@ -25,7 +25,6 @@ const useLiveness = () => {
   const [adjustedFaceRectangleCoordinates, setAdjustedFaceRectangleCoordinates] = useState(null)
   /* Local (inside of canvas) coordinates for circle-focus Boundary Rectangle */
   const [circleFocusBoundaryRectangle, setCircleFocusBoundaryRectangle] = useState(null)
-  const [prevCircleFocusBoundaryRectangle, setPrevCircleFocusBoundaryRectangle] = useState(null); // Extra-state, required only for utility of useEffect.
   const [isValid, setIsValid] = useState(false) // 'inside' || 'outside'
   const [validObject, setValidObject] = useState({ // Object to handle the alert when no face is detected
     /* Counter for counting the number of frames without face detected */
@@ -77,16 +76,6 @@ const useLiveness = () => {
     }
   }, [validObject.counter]);
 
-  /* circle-focus rect boundary */
-  useEffect(() => {
-    if (
-      circleFocusBoundaryRectangle &&
-      JSON.stringify(circleFocusBoundaryRectangle) !== JSON.stringify(prevCircleFocusBoundaryRectangle)
-    ) {
-      console.log(circleFocusBoundaryRectangle);
-      setPrevCircleFocusBoundaryRectangle(circleFocusBoundaryRectangle);
-    }
-  }, [circleFocusBoundaryRectangle, prevCircleFocusBoundaryRectangle])
 
   const activateCamera = async () => {
     let canvas = document.getElementById('overlay')
@@ -150,7 +139,7 @@ const useLiveness = () => {
     loadModels();
   }, []);
 
-  /* Function to be played on video load.
+  /* Function to be played on video load.   
   * Will start detection and drawing.
   */
   const onPlay = async () => {
@@ -414,7 +403,7 @@ const useLiveness = () => {
   const [isLivenessCompleted, setIsLivenessCompleted] = useState(false)
 
   const toastShownForStepRef = useRef(null);
-  /* Actual LIVENESS DETECTION */
+  // * Actual LIVENESS DETECTION 
   useEffect(() => {  
      // Ensure detection is valid, instruction has started, there's a 'detection' object, the index is valid and it hasn't completed the liveness check
     if (isValid && isIntructionStarted && detection && stepIndex < (steps.length - 1) && !isLivenessCompleted) {    
