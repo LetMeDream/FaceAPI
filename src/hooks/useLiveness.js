@@ -1,9 +1,10 @@
 import * as faceapi from 'face-api.js'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { interpolateAgePredictions, isRetangleInside, areRectanglesDifferent, getInvertedFaceRectangle, getSmallRectangle, getSmallRectangleRealCoordinates } from '../helpers/liveness'
 import toast from 'react-hot-toast'
 import { calculateOrientation } from '../helpers/liveness'
-import { useRef } from 'react'
+import useSound from 'use-sound'
+import successSound from '../assets/sounds/success.mp3'
 
 const useLiveness = () => {
   const [isCameraShown, setIsCameraShown] = useState(false)
@@ -35,13 +36,9 @@ const useLiveness = () => {
   const [detection, setDetection] = useState(null); // State for storing the detection result
 
   const [, setFaceInsideRectangle] = useState(null)
-  const successSoundRef = useRef(null);
 
-  const playSuccessSound = () => {
-    if (successSoundRef.current) {
-      successSoundRef.current.play();
-    }
-  };
+  /* Sound */
+  const [playSuccessSound] = useSound(successSound);
 
   const handleCompletition = () => {
     // Logic for your liveness detection step completion
@@ -49,6 +46,14 @@ const useLiveness = () => {
     setIsLivenessCompleted(true)
     playSuccessSound()
   };
+
+  const resetLivenessDetection = () => {
+    setTimeout(() => {
+      setStepIndex(0)
+      setInstruction(steps[0]?.instruction)
+      setIsLivenessCompleted(false)
+    }, 100);
+  }
 
   /* Expression */
   const [expression, setExpression] = useState(null)
@@ -86,10 +91,12 @@ const useLiveness = () => {
   const activateCamera = async () => {
     let canvas = document.getElementById('overlay')
     let context = canvas.getContext('2d')
+    setIsValid(false)
+
     setTimeout(() => {
       context.clearRect(0, 0, canvas.width, canvas.height);
     }, 50);
-
+    resetLivenessDetection()
     if (!isCameraShown){
       setIsCameraShown(true)
       setIsPlaying(true)
@@ -100,7 +107,7 @@ const useLiveness = () => {
           video: {}
         })
         video.srcObject = stream
-        video.onplay = onPlay
+        // video.onplay = onPlay
       } catch (error) {
         console.error(error)
         toast.error(error?.message)
@@ -173,6 +180,11 @@ const useLiveness = () => {
 
       if (fullFaceDescription) {
         const resizedResults = faceapi.resizeResults(fullFaceDescription, dims);
+        const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+        let icon = document.getElementById('file-icon');
+        if (icon) {
+          icon.src = dataURL; // Update the icon with the current frame
+        }
         setDetection(resizedResults); // Store detection result
 
         // Draw important landmarks (for indexes 1, 15, 30)
@@ -346,8 +358,6 @@ const useLiveness = () => {
   
   /* Pausing video */
   const onPause = () => {
-    setStepIndex(0)
-    setInstruction(steps[0])
     let video = document.getElementById('video')
     video.pause()
     setIsPlaying(false)
@@ -361,10 +371,7 @@ const useLiveness = () => {
 
   /* Resuming video */
   const onResume = () => {
-    setStepIndex(0)
-    setInstruction(steps[0]?.instruction)
-    setIsLivenessCompleted(false)
-    setIsIntructionStarted(false)
+    resetLivenessDetection()
 
     let video = document.getElementById('video')
     video.play()
@@ -404,6 +411,7 @@ const useLiveness = () => {
   const [isIntructionStarted, setIsIntructionStarted] = useState(false)
   const [isLivenessCompleted, setIsLivenessCompleted] = useState(false)
 
+  const toastShownForStepRef = useRef(null);
   /* Actual LIVENESS DETECTION */
   useEffect(() => {  
      // Ensure detection is valid, instruction has started, there's a 'detection' object, the index is valid and it hasn't completed the liveness check
@@ -430,22 +438,33 @@ const useLiveness = () => {
         if (stepIndex === steps.length - 2) handleCompletition()
 
         const nextStepIndex = stepIndex + 1;
-        if (nextStepIndex < (steps.length - 1)) {         // Check if there is a next step
-          setStepIndex(nextStepIndex); 
-          toast.success('Great!🎉 Keep going!', {
-            position: "top-center",
-            autoClose: 3,
-            closeOnClick: false,
-            pauseOnHover: true,
-            draggable: true,
-            theme: "light",
-          });
+        if ((nextStepIndex < (steps.length - 1)) && isValid) { // Check if there is a next step
+          if (toastShownForStepRef.current !== stepIndex) {
+            toastShownForStepRef.current = stepIndex;
+
+            toast.success('Great!🎉 Keep going!', {
+              position: "top-center",
+              autoClose: 3000,
+              closeOnClick: false,
+              pauseOnHover: true,
+              draggable: true,
+              theme: "light",
+              id: `step-toast-${stepIndex}`
+            });
+
+            setTimeout(() => {
+              setStepIndex(nextStepIndex);
+              // clear guard so future steps can show toasts again
+              toastShownForStepRef.current = null;
+            }, 333);
+          }
         } else {
           // This was the last step (excluding 'Finalizado' logic if handled differently)
           console.log("Liveness check sequence completed!");
+          setIsLivenessCompleted(true)
           setTimeout(() => {
             onPause()
-          }, 1000)
+          }, 300)
       }
       }
     }
@@ -456,7 +475,7 @@ const useLiveness = () => {
     setTimeout(() => {
       if(stepIndex === 0) setIsIntructionStarted(true)
     }, 1000)
-  }, [stepIndex])
+  }, [stepIndex, isPlaying])
 
   const instructionMessage = () => {
     return steps[stepIndex]?.instruction || steps[stepIndex];
@@ -477,8 +496,8 @@ const useLiveness = () => {
     adjustedFaceRectangleCoordinates,
     headOrientation,
     instruction,
-    successSoundRef,
-    instructionMessage
+    instructionMessage,
+    isLivenessCompleted
   }
 }
 
