@@ -23,7 +23,7 @@ const CameraContainer = ({
 }) => {
 
   return (
-    <div className='camera-container'
+    <div className='camera-container !rounded-[50px] overflow-hidden'
     >
       <video
         autoPlay
@@ -37,7 +37,7 @@ const CameraContainer = ({
       <div className="mask"></div>
       
       <canvas
-        id='overlay'  
+        id='overlay'
       />
 
       <StyledCircleFocus 

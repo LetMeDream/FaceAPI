@@ -14,7 +14,7 @@
 }
 
 :root {
-    /* Variables */
+  /* Variables */
     --main-width: 640px;  /* Needs to be 640px */
     --main-height: 480px; /* Needs to be 480px */
     --circle-mask-width: 80%;
@@ -22,7 +22,7 @@
 
     /* Landscape phones and down */
     @media (max-width: 480px) {
-      --mask-image-radius: calc(90vw / 2); /* La mitad del diámetro del .circle-focus */ 
+      --mask-image-radius: calc(100vw / 1.9); /* La mitad del diámetro del .circle-focus */ 
     }
 
 }
@@ -35,14 +35,14 @@ canvas#overlay {
   height: 100%;
   /* border: 2px solid green; */
   transform: scaleX(-1); /* Both inverted */
-  max-width: min(100vw, var(--main-width));
+  width: min(100vw, var(--main-width));
   width: var(--main-width);
 
 }
 
 .camera-container {
 
-  max-width: min(100vw, var(--main-width));
+  width: min(100vw, var(--main-width));
   width: var(--main-width);
   height: var(--main-height); /* Altura del padre de la .mask y .circle-focus */
   position: relative;

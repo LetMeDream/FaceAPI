@@ -125,7 +125,7 @@ const useLiveness = () => {
       try {
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+          // faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
           faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
           faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL)
@@ -136,7 +136,8 @@ const useLiveness = () => {
       }
     };
 
-    loadModels();
+    loadModels()
+    
   }, []);
 
   /* Function to be played on video load.   
@@ -179,7 +180,7 @@ const useLiveness = () => {
         setDetection(resizedResults); // Store detection result
 
         // Draw important landmarks (for indexes 1, 15, 30)
-        const importantLandmarks = [1, 15, 30];
+        /* const importantLandmarks = [1, 15, 30];
         const landmarks = resizedResults.landmarks.positions;
         context.fillStyle = 'blue';
         landmarks.forEach((point, index) => {
@@ -189,7 +190,7 @@ const useLiveness = () => {
             context.fill();
             context.fillText(index, point.x + 3, point.y - 3);
           }
-        });
+        }); */
 
         const orientation = calculateOrientation(resizedResults)
 
@@ -230,14 +231,18 @@ const useLiveness = () => {
         // Calculate circle boundaries from the circle mask element
         const circleFocus = document.getElementById('circle-mask');
         if (circleFocus) {
+          /* Canvas over video */
           const canvasRect = canvas.getBoundingClientRect();
+          /* Circle mask over canvas */
           const circleRect = circleFocus.getBoundingClientRect();
+          /* Coordinates (of the circle mask) relative to canvas */
           const circleFocusRectRealCoordinates = {
             left: circleRect.left - canvasRect.left,
             top: circleRect.top - canvasRect.top,
             right: circleRect.right - canvasRect.left,
             bottom: circleRect.bottom - canvasRect.top
           };
+          /* Define corners of the circle mask relative to the canvas */
           const circleRectCorners = {
             topLeft: { x: circleFocusRectRealCoordinates.left, y: circleFocusRectRealCoordinates.top },
             topRight: { x: circleFocusRectRealCoordinates.right, y: circleFocusRectRealCoordinates.top },
@@ -246,8 +251,10 @@ const useLiveness = () => {
           };
           setCircleFocusBoundaryRectangle(circleRectCorners);
 
+          // debugger 
+          const containerMainWidth = parseFloat(getComputedStyle(containerDiv).getPropertyValue('--main-width'));
           // Validate if the small rectangle is inside the circle's boundaries
-          const valid = containerDiv && containerDiv.clientWidth < parseFloat(getComputedStyle(containerDiv).getPropertyValue('--main-width'))
+          const valid = containerDiv && containerDiv.clientWidth < containerMainWidth
             ? isRetangleInside(circleRectCorners, responsiveSmallRectRealCoordinates)
             : isRetangleInside(circleRectCorners, smallRectRealCoordinates);
           setIsValid(valid);
@@ -390,7 +397,7 @@ const useLiveness = () => {
     {
       instruction: 'Sonríe', // "Smile"
       // The function that checks if the 'Smile' condition is met
-      checkCondition: (detection) => detection?.expressions?.happy > 0.7 // Added optional chaining for safety
+      checkCondition: (detection) => detection?.expressions?.happy > 0.95 // Added optional chaining for safety
     },
     {
       instruction: 'Finalizado', // "Finished"
@@ -442,7 +449,7 @@ const useLiveness = () => {
               theme: "light",
               id: `step-toast-${stepIndex}`
             });
-
+            playSuccessSound()
             setTimeout(() => {
               setStepIndex(nextStepIndex);
               // clear guard so future steps can show toasts again
