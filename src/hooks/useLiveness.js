@@ -161,7 +161,6 @@ const useLiveness = () => {
       const fullFaceDescription = await faceapi
         .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 288 }))
         .withFaceLandmarks()
-        .withFaceDescriptor()
         .withFaceExpressions()
         .withAgeAndGender();
 
